@@ -37,6 +37,8 @@ export default class PrayerTime extends Extension {
             prayers: null,
             nextPrayerI: null,
         };
+        this._lastReminderTime = null;
+        this._lastArrivedPrayerTime = null;
         this._init().catch((e) => console.error(`[${this.metadata.name}]: Init error:`, e));
 
         // update extension on system wake
@@ -176,6 +178,10 @@ export default class PrayerTime extends Extension {
             // notify prayer arrival
             const text = _("Time for %s").format(nextPrayer.name);
             this._indicator.text = text;
+            const prayerTime = nextPrayer.time.to_unix_usec();
+            if (this._lastArrivedPrayerTime === prayerTime) return;
+            this._lastArrivedPrayerTime = prayerTime;
+
             if (this._settings.isNotify) Main.notify(this.metadata.name, text);
             if (this._settings.isSound) global.display.get_sound_player().play_from_file(this._soundFile, text, null);
 
@@ -195,7 +201,11 @@ export default class PrayerTime extends Extension {
             // minutesLeft will always > 0, so this._settings.reminder > 0 && ... is redundant
             const text = _("%s in %d minutes").format(nextPrayer.name, this._settings.reminder);
             this._indicator.text = text;
-            if (this._settings.isNotify) Main.notify(this.metadata.name, text);
+            const prayerTime = nextPrayer.time.to_unix_usec();
+            if (this._settings.isNotify && this._lastReminderTime !== prayerTime) {
+                this._lastReminderTime = prayerTime;
+                Main.notify(this.metadata.name, text);
+            }
             return;
         }
 
