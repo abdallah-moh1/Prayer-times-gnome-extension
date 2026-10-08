@@ -359,6 +359,26 @@ msgstr ""
 msgid "Show next prayer countdown or time in the status area."
 msgstr ""
 
+#: src/prefs.js:399
+msgid "Compact"
+msgstr ""
+
+#: src/prefs.js:400
+msgid "Normal"
+msgstr ""
+
+#: src/prefs.js:401
+msgid "Normal + icon"
+msgstr ""
+
+#: src/prefs.js:404
+msgid "Indicator layout"
+msgstr ""
+
+#: src/prefs.js:405
+msgid "Choose how the next prayer appears in the top bar."
+msgstr ""
+
 #: src/prefs.js:403
 msgid "Notifications"
 msgstr ""

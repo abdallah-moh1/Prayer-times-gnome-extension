@@ -8,6 +8,10 @@ import { ExtensionPreferences, gettext as _ } from "resource:///org/gnome/Shell/
 export default class PrayerTimePreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const gSettings = this.getSettings();
+        if (!gSettings.get_user_value("indicator-mode")) {
+            const legacyMode = gSettings.get_boolean("compact-display") ? "compact" : "normal";
+            gSettings.set_string("indicator-mode", legacyMode);
+        }
 
         // tab 1: calculations
         const calcTab = new Adw.PreferencesPage({
@@ -396,12 +400,18 @@ export default class PrayerTimePreferences extends ExtensionPreferences {
         group.add(displayModeRow);
         this.#bindMapping(gSettings, "display-mode", displayModeRow, displayModes);
 
-        const compactRow = new Adw.SwitchRow({
-            title: _("Compact display"),
-            subtitle: _("Show the current prayer's icon with only the countdown or time."),
+        const indicatorModes = [
+            { id: "compact", name: _("Compact") },
+            { id: "normal", name: _("Normal") },
+            { id: "normal-with-icon", name: _("Normal + icon") },
+        ];
+        const indicatorModeRow = new Adw.ComboRow({
+            title: _("Indicator layout"),
+            subtitle: _("Choose how the next prayer appears in the top bar."),
+            model: new Gtk.StringList({ strings: indicatorModes.map((mode) => mode.name) }),
         });
-        group.add(compactRow);
-        gSettings.bind("compact-display", compactRow, "active", Gio.SettingsBindFlags.DEFAULT);
+        group.add(indicatorModeRow);
+        this.#bindMapping(gSettings, "indicator-mode", indicatorModeRow, indicatorModes);
 
         const panelPositions = [
             { id: "far-left", name: _("Far left") },

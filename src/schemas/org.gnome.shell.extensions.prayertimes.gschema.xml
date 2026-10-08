@@ -105,10 +105,20 @@
                 <description>Display next prayer as a countdown or fixed time</description>
             </key>
             
+            <key name="indicator-mode" type="s">
+                <summary>Indicator layout</summary>
+                <default>'normal'</default>
+                <choices>
+                    <choice value='compact'/>
+                    <choice value='normal'/>
+                    <choice value='normal-with-icon'/>
+                </choices>
+                <description>Choose how the next prayer appears in the top bar</description>
+            </key>
             <key name="compact-display" type="b">
-                <summary>Compact display</summary>
+                <summary>Legacy compact display setting</summary>
                 <default>false</default>
-                <description>Show the current prayer's icon with only the countdown or time</description>
+                <description>Compatibility setting migrated to indicator-mode</description>
             </key>
             <key name="panel-position" type="s">
                 <summary>Panel position</summary>

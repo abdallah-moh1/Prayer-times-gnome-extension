@@ -361,6 +361,26 @@ msgstr "وضع العرض"
 msgid "Show next prayer countdown or time in the status area."
 msgstr "إظهار العد التنازلي أو وقت الصلاة القادمة في منطقة الحالة."
 
+#: src/prefs.js:399
+msgid "Compact"
+msgstr "مضغوط"
+
+#: src/prefs.js:400
+msgid "Normal"
+msgstr "عادي"
+
+#: src/prefs.js:401
+msgid "Normal + icon"
+msgstr "عادي + أيقونة"
+
+#: src/prefs.js:404
+msgid "Indicator layout"
+msgstr "نمط العرض في الشريط"
+
+#: src/prefs.js:405
+msgid "Choose how the next prayer appears in the top bar."
+msgstr "اختر طريقة عرض الصلاة القادمة في الشريط العلوي."
+
 #: src/prefs.js:403
 msgid "Notifications"
 msgstr "الإشعارات"

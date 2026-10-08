@@ -48,6 +48,11 @@ class SettingManagerClass extends GObject.Object {
         this.location = { latitude: null, longitude: null };
         this.calcMethod = { id: null, fajr: null, isha: null };
 
+        if (!this._gSettings.get_user_value("indicator-mode")) {
+            const legacyMode = this._gSettings.get_boolean("compact-display") ? "compact" : "normal";
+            this._gSettings.set_string("indicator-mode", legacyMode);
+        }
+
         this._bindSimpleSettings();
         this._setupSourceSettings();
         this._setupCalcMethodSettings();
@@ -81,7 +86,7 @@ class SettingManagerClass extends GObject.Object {
 
         // only the indicator needs refreshing, not a full reload
         for (const { key, prop, type } of [
-            { key: "compact-display", prop: "isCompact", type: "boolean" },
+            { key: "indicator-mode", prop: "indicatorMode", type: "string" },
             { key: "panel-position", prop: "panelPosition", type: "string" },
         ]) {
             this[prop] = this._gSettings[`get_${type}`](key);
