@@ -403,11 +403,19 @@ export default class PrayerTimePreferences extends ExtensionPreferences {
         group.add(compactRow);
         gSettings.bind("compact-display", compactRow, "active", Gio.SettingsBindFlags.DEFAULT);
 
-        const panelRightRow = new Adw.SwitchRow({
-            title: _("Show on right side of top bar"),
+        const panelPositions = [
+            { id: "far-left", name: _("Far left") },
+            { id: "left", name: _("Left") },
+            { id: "center", name: _("Center") },
+            { id: "right", name: _("Right") },
+            { id: "far-right", name: _("Far right") },
+        ];
+        const panelPositionRow = new Adw.ComboRow({
+            title: _("Panel position"),
+            model: new Gtk.StringList({ strings: panelPositions.map((p) => p.name) }),
         });
-        group.add(panelRightRow);
-        gSettings.bind("panel-right", panelRightRow, "active", Gio.SettingsBindFlags.DEFAULT);
+        group.add(panelPositionRow);
+        this.#bindMapping(gSettings, "panel-position", panelPositionRow, panelPositions);
 
         return group;
     }

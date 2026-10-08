@@ -110,10 +110,17 @@
                 <default>false</default>
                 <description>Show the current prayer's icon with only the countdown or time</description>
             </key>
-            <key name="panel-right" type="b">
-                <summary>Show on right side of top bar</summary>
-                <default>false</default>
-                <description>Place the indicator on the right side of the top bar instead of the center</description>
+            <key name="panel-position" type="s">
+                <summary>Panel position</summary>
+                <default>'center'</default>
+                <choices>
+                    <choice value='far-left'/>
+                    <choice value='left'/>
+                    <choice value='center'/>
+                    <choice value='right'/>
+                    <choice value='far-right'/>
+                </choices>
+                <description>Where the indicator is placed in the top bar</description>
             </key>
 
             <key name="notify-prayer" type="b">

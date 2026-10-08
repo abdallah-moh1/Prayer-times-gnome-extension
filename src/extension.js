@@ -54,7 +54,13 @@ export default class PrayerTime extends Extension {
 
     _placeIndicator() {
         const container = this._indicator.container;
-        const [box, index] = this._settings.isPanelRight ? [Main.panel._rightBox, 0] : [Main.panel._centerBox, 1];
+        const [box, index] = {
+            "far-left": [Main.panel._leftBox, 0],
+            left: [Main.panel._leftBox, -1],
+            center: [Main.panel._centerBox, 1],
+            right: [Main.panel._rightBox, 0],
+            "far-right": [Main.panel._rightBox, -1],
+        }[this._settings.panelPosition];
 
         container.get_parent().remove_child(container);
         box.insert_child_at_index(container, index);

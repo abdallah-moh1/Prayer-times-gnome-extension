@@ -80,13 +80,13 @@ class SettingManagerClass extends GObject.Object {
         });
 
         // only the indicator needs refreshing, not a full reload
-        for (const { key, prop } of [
-            { key: "compact-display", prop: "isCompact" },
-            { key: "panel-right", prop: "isPanelRight" },
+        for (const { key, prop, type } of [
+            { key: "compact-display", prop: "isCompact", type: "boolean" },
+            { key: "panel-position", prop: "panelPosition", type: "string" },
         ]) {
-            this[prop] = this._gSettings.get_boolean(key);
+            this[prop] = this._gSettings[`get_${type}`](key);
             this._gSettingListener[prop] = this._gSettings.connect(`changed::${key}`, (gSettings) => {
-                this[prop] = gSettings.get_boolean(key);
+                this[prop] = gSettings[`get_${type}`](key);
                 this._refreshIndicator();
             });
         }
