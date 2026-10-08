@@ -169,10 +169,8 @@ export default class PrayerTime extends Extension {
         const nextPrayer = this._schedule.prayers[this._schedule.nextPrayerI];
         const diffUsec = nextPrayer.time.to_unix_usec() - GLib.get_real_time();
 
-        // icon shows the current prayer: the one arriving now, otherwise the last one that passed
-        const { prayers, nextPrayerI } = this._schedule;
         const isArrived = diffUsec <= 3e6; // three second buffer
-        this._indicator.icon = this._settings.isCompact ? (isArrived ? nextPrayer : prayers[(nextPrayerI || prayers.length) - 1]).id : null;
+        this._indicator.icon = this._settings.isCompact ? nextPrayer.id : null;
 
         if (isArrived) {
             // notify prayer arrival
