@@ -78,14 +78,31 @@ export class Menu extends PopupMenu.PopupMenu {
 }
 
 class IndicatorClass extends PanelMenu.Button {
-    _init(extensionName) {
+    _init(extensionName, extensionPath) {
         super._init(0.5, extensionName, true);
-        this._label = new St.Label({
-            text: "...",
-            y_align: Clutter.ActorAlign.CENTER,
-            style: "padding: 0px 12px;",
-        });
-        this.add_child(this._label);
+        this._extensionPath = extensionPath;
+        this._prayerId = null;
+
+        this._icon = new St.Icon({ icon_size: 16, style: "margin-right: 6px;", visible: false });
+        this._label = new St.Label({ text: "...", y_align: Clutter.ActorAlign.CENTER });
+
+        const box = new St.BoxLayout({ style: "padding: 0px 12px;" });
+        box.add_child(this._icon);
+        box.add_child(this._label);
+        this.add_child(box);
+    }
+
+    // prayer id whose icon is shown beside the text, null to hide it
+    get icon() {
+        return this._prayerId;
+    }
+
+    set icon(prayerId) {
+        if (this._prayerId === prayerId) return;
+        this._prayerId = prayerId;
+
+        this._icon.visible = !!prayerId;
+        if (prayerId) this._icon.gicon = Gio.icon_new_for_string(`${this._extensionPath}/assets/icons/${prayerId}.svg`);
     }
 
     get text() {

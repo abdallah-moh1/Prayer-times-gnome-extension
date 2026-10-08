@@ -15,13 +15,14 @@ import { CalcPrayerTimes } from "./calc-prayer-times.js";
 
 export default class PrayerTime extends Extension {
     enable() {
-        this._settings = new SettingManager(this.getSettings(), this.metadata, this.reloadMain.bind(this));
+        this._settings = new SettingManager(this.getSettings(), this.metadata, this.reloadMain.bind(this), this.refreshIndicator.bind(this));
         this._timeFormat = this._settings.clockFormat === "12h" ? _("%-I:%M %p") : _("%R");
 
-        this._indicator = new Indicator(this.metadata.name);
+        this._indicator = new Indicator(this.metadata.name, this.path);
         this._menu = new Menu(this._indicator, 0.5, St.Side.TOP, this.path, this._timeFormat);
         this._indicator.setMenu(this._menu);
         Main.panel.addToStatusArea(this.uuid, this._indicator, 1, "center");
+        this._placeIndicator();
 
         this._geoclueService = null;
         this._clockSignalId = null;
@@ -49,6 +50,14 @@ export default class PrayerTime extends Extension {
                 Main.notify(this.metadata.name, _("Failed to detect system sleep. Prayer times won't update automatically when your computer wakes up: %s").format(e.message));
             }
         });
+    }
+
+    _placeIndicator() {
+        const container = this._indicator.container;
+        const [box, index] = this._settings.isPanelRight ? [Main.panel._rightBox, 0] : [Main.panel._centerBox, 1];
+
+        container.get_parent().remove_child(container);
+        box.insert_child_at_index(container, index);
     }
 
     async _init() {
@@ -152,8 +161,12 @@ export default class PrayerTime extends Extension {
         const nextPrayer = this._schedule.prayers[this._schedule.nextPrayerI];
         const diffUsec = nextPrayer.time.to_unix_usec() - GLib.get_real_time();
 
-        // three second buffer
-        if (diffUsec <= 3e6) {
+        // icon shows the current prayer: the one arriving now, otherwise the last one that passed
+        const { prayers, nextPrayerI } = this._schedule;
+        const isArrived = diffUsec <= 3e6; // three second buffer
+        this._indicator.icon = this._settings.isCompact ? (isArrived ? nextPrayer : prayers[(nextPrayerI || prayers.length) - 1]).id : null;
+
+        if (isArrived) {
             // notify prayer arrival
             const text = _("Time for %s").format(nextPrayer.name);
             this._indicator.text = text;
@@ -180,10 +193,12 @@ export default class PrayerTime extends Extension {
             return;
         }
 
-        this._indicator.text =
-            this._settings.displayMode === "countdown" //
-                ? _("%s in %s").format(nextPrayer.name, `${String((minutesLeft / 60) | 0).padStart(2, "0")}:${String(minutesLeft % 60).padStart(2, "0")}`)
-                : _("%s: %s").format(nextPrayer.name, nextPrayer.time.format(this._timeFormat));
+        const isCountdown = this._settings.displayMode === "countdown";
+        const countdown = `${String((minutesLeft / 60) | 0).padStart(2, "0")}:${String(minutesLeft % 60).padStart(2, "0")}`;
+        const time = nextPrayer.time.format(this._timeFormat);
+
+        if (this._settings.isCompact) this._indicator.text = isCountdown ? _("in %s").format(countdown) : time;
+        else this._indicator.text = isCountdown ? _("%s in %s").format(nextPrayer.name, countdown) : _("%s: %s").format(nextPrayer.name, time);
     }
     async _advanceToNextDay() {
         this._schedule = {
@@ -192,6 +207,11 @@ export default class PrayerTime extends Extension {
         };
         this._menu.update(this._schedule);
         this._tick();
+    }
+
+    refreshIndicator() {
+        this._placeIndicator();
+        if (this._clockSignalId) this._tick(); // once the schedule is loaded
     }
 
     async refreshSchedule() {

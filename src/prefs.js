@@ -396,6 +396,19 @@ export default class PrayerTimePreferences extends ExtensionPreferences {
         group.add(displayModeRow);
         this.#bindMapping(gSettings, "display-mode", displayModeRow, displayModes);
 
+        const compactRow = new Adw.SwitchRow({
+            title: _("Compact display"),
+            subtitle: _("Show the current prayer's icon with only the countdown or time."),
+        });
+        group.add(compactRow);
+        gSettings.bind("compact-display", compactRow, "active", Gio.SettingsBindFlags.DEFAULT);
+
+        const panelRightRow = new Adw.SwitchRow({
+            title: _("Show on right side of top bar"),
+        });
+        group.add(panelRightRow);
+        gSettings.bind("panel-right", panelRightRow, "active", Gio.SettingsBindFlags.DEFAULT);
+
         return group;
     }
     #notificationGroup(gSettings) {

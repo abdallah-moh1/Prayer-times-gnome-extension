@@ -105,6 +105,17 @@
                 <description>Display next prayer as a countdown or fixed time</description>
             </key>
             
+            <key name="compact-display" type="b">
+                <summary>Compact display</summary>
+                <default>false</default>
+                <description>Show the current prayer's icon with only the countdown or time</description>
+            </key>
+            <key name="panel-right" type="b">
+                <summary>Show on right side of top bar</summary>
+                <default>false</default>
+                <description>Place the indicator on the right side of the top bar instead of the center</description>
+            </key>
+
             <key name="notify-prayer" type="b">
                 <summary>Send notifications</summary>
                 <default>true</default>

@@ -9,12 +9,13 @@ import * as MessageTray from "resource:///org/gnome/shell/ui/messageTray.js";
 import { gettext as _ } from "resource:///org/gnome/shell/extensions/extension.js";
 
 class SettingManagerClass extends GObject.Object {
-    _init(gSettings, metadata, reloadMain) {
+    _init(gSettings, metadata, reloadMain, refreshIndicator) {
         super._init();
         this._gSettings = gSettings;
         this._gSettingListener = {};
         this._desktopSettings = Gio.Settings.new("org.gnome.desktop.interface");
         this._reloadExtensionMain = reloadMain;
+        this._refreshIndicator = refreshIndicator;
 
         const versionCache = this._gSettings.get_int("version-cache");
         if (versionCache < metadata.version) {
@@ -77,6 +78,18 @@ class SettingManagerClass extends GObject.Object {
             this.clockFormat = gSettings.get_string(key);
             this._reloadExtensionMain();
         });
+
+        // only the indicator needs refreshing, not a full reload
+        for (const { key, prop } of [
+            { key: "compact-display", prop: "isCompact" },
+            { key: "panel-right", prop: "isPanelRight" },
+        ]) {
+            this[prop] = this._gSettings.get_boolean(key);
+            this._gSettingListener[prop] = this._gSettings.connect(`changed::${key}`, (gSettings) => {
+                this[prop] = gSettings.get_boolean(key);
+                this._refreshIndicator();
+            });
+        }
 
         this.isNotify = this._gSettings.get_boolean("notify-prayer");
         this._gSettingListener.isNotifyListener = this._gSettings.connect("changed::notify-prayer", (gSettings, key) => {
