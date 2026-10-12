@@ -6,6 +6,7 @@ import St from "gi://St";
 
 import { Extension, gettext as _ } from "resource:///org/gnome/shell/extensions/extension.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import * as MessageTray from "resource:///org/gnome/shell/ui/messageTray.js";
 
 import { SettingManager } from "./setting-manager.js";
 import { Menu, Indicator } from "./ui.js";
@@ -29,6 +30,8 @@ export default class PrayerTime extends Extension {
         this._soundFile = null;
         this._wakeProxy = null;
         this._wakeSignalId = null;
+        this._notificationSource = new MessageTray.Source({ title: this.metadata.name, iconName: "preferences-system-time-symbolic" });
+        Main.messageTray.add(this._notificationSource);
 
         this._wallClock = new GnomeDesktop.WallClock();
 
@@ -180,7 +183,7 @@ export default class PrayerTime extends Extension {
             if (this._lastArrivedPrayerTime === prayerTime) return;
             this._lastArrivedPrayerTime = prayerTime;
 
-            if (this._settings.isNotify) Main.notify(this.metadata.name, text);
+            if (this._settings.isNotify) this._notifyPrayer(nextPrayer, text, _("It is time to pray."));
             if (this._settings.isSound) global.display.get_sound_player().play_from_file(this._soundFile, text, null);
 
             // shift to tomorrow / next prayer
@@ -202,7 +205,9 @@ export default class PrayerTime extends Extension {
             const prayerTime = nextPrayer.time.to_unix_usec();
             if (this._settings.isNotify && this._lastReminderTime !== prayerTime) {
                 this._lastReminderTime = prayerTime;
-                Main.notify(this.metadata.name, text);
+                const notificationTitle = _("Upcoming prayer");
+                const notificationBody = _("%s is in %d minutes (%s).").format(nextPrayer.name, this._settings.reminder, nextPrayer.time.format(this._timeFormat));
+                this._notifyPrayer(nextPrayer, notificationTitle, notificationBody);
             }
             return;
         }
@@ -244,6 +249,18 @@ export default class PrayerTime extends Extension {
         }
     }
 
+    _notifyPrayer(prayer, title, body) {
+        const iconFile = Gio.File.new_for_path(`${this.path}/assets/icons/${prayer.id}.svg`);
+        const notification = new MessageTray.Notification({
+            source: this._notificationSource,
+            title,
+            body,
+            gicon: new Gio.FileIcon({ file: iconFile }),
+            isTransient: true,
+        });
+        this._notificationSource.addNotification(notification);
+    }
+
     _destroyMain() {
         this._indicator.text = "...";
         this._menu.destroy();
@@ -275,6 +292,11 @@ export default class PrayerTime extends Extension {
         }
 
         this._destroyMain();
+
+        if (this._notificationSource) {
+            this._notificationSource.destroy();
+            this._notificationSource = null;
+        }
 
         if (this._wallClock) this._wallClock = null;
 

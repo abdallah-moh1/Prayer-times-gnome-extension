@@ -79,14 +79,27 @@ msgid ""
 "Failed to find location automatically. Defaulting to manual calculations: %s"
 msgstr ""
 
-#: src/extension.js:158
+#: src/extension.js:180
 #, javascript-format
 msgid "Time for %s"
 msgstr ""
 
-#: src/extension.js:177
+#: src/extension.js:186
+msgid "It is time to pray."
+msgstr ""
+
+#: src/extension.js:203
 #, javascript-format
 msgid "%s in %d minutes"
+msgstr ""
+
+#: src/extension.js:208
+msgid "Upcoming prayer"
+msgstr ""
+
+#: src/extension.js:209
+#, javascript-format
+msgid "%s is in %d minutes (%s)."
 msgstr ""
 
 #: src/extension.js:186
