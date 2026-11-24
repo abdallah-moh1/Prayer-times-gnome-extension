@@ -104,14 +104,15 @@ export class ScheduleManager {
     }
 
     async #getTimes(provider, dateTime) {
+        const ymd = dateTime.get_ymd();
         try {
-            return await provider.getTimes(dateTime);
+            return await provider.getTimes(ymd);
         } catch (e) {
             if (this.#settings.prayerTimeSource !== "mawaqit") throw e;
 
             Main.notify(this.#metadata.name, _("Mawaqit prayer data is unavailable for this date. Defaulting to local calculations: %s").format(e.message));
             const localProvider = await CalculationProvider.init(this.#settings, this.#metadata.name);
-            return localProvider.getTimes(dateTime);
+            return localProvider.getTimes(ymd);
         }
     }
 

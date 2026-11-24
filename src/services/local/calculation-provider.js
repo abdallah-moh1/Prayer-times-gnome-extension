@@ -44,10 +44,9 @@ export class CalculationProvider {
         return { latitude: this.#settings.latitude, longitude: this.#settings.longitude };
     }
 
-    getTimes(dateTime) {
-        const [year, month, day] = dateTime.get_ymd();
+    getTimes(ymd) {
         return new PrayerTimesCalculator(
-            [year, month, day],
+            ymd,
             this.#timezone,
             this.#locationCache,
             {

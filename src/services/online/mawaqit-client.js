@@ -84,9 +84,7 @@ export class MawaqitClient {
         };
     }
 
-    getTimes(dateTime) {
-        const [year, month, day] = dateTime.get_ymd();
-
+    getTimes([year, month, day]) {
         // calendar months are 0 indexed, day are 1 indexed strings.
         const prayers = this.#cache.calendar[month - 1]?.[String(day)];
         if (!Array.isArray(prayers) || prayers.length < 5 || prayers.length > 6) throw new Error(_("Unexpected prayer data structure or array length"));
