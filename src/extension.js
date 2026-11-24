@@ -17,7 +17,7 @@ export default class PrayerTime extends Extension {
 
         this._scheduleManager = new ScheduleManager(this._settings, this.metadata, () => this.reInit());
 
-        this._indicator = new Indicator(this.metadata.name, this._settings, () => this.reInit());
+        this._indicator = new Indicator(this.metadata.name, this._settings);
         this._menu = new Menu(this._indicator, this._settings);
         this._indicator.setMenu(this._menu);
         Main.panel.addToStatusArea(this.uuid, this._indicator, this._settings.indicatorOrder, this._settings.indicatorAlignment);
@@ -44,7 +44,6 @@ export default class PrayerTime extends Extension {
             const ready = await this._scheduleManager.buildSchedule();
             if (!ready) return;
 
-            this._indicator.updateIcon(this._scheduleManager.nextPrayer.icon);
             this._menu.populate(this._scheduleManager.schedule);
 
             this._soundFile = Gio.File.new_for_path(this.path + "/assets/audio/athan.ogg"); // TODO: don't include if sound disabled
@@ -74,8 +73,6 @@ export default class PrayerTime extends Extension {
     }
 
     _startCountdown(targetTimeUsec, onComplete) {
-        const nextPrayerName = this._scheduleManager.nextPrayer.name;
-
         const tick = () => {
             const uSecLeft = targetTimeUsec - GLib.get_real_time();
 
@@ -85,7 +82,7 @@ export default class PrayerTime extends Extension {
                 return;
             }
 
-            this._indicator.setUpcomingCountdown(nextPrayerName, uSecLeft);
+            this._indicator.setCountdown(uSecLeft);
             // TODO: optimise and use timeout directly
             this._scheduleTimeout(60, tick);
         };
@@ -93,12 +90,15 @@ export default class PrayerTime extends Extension {
         tick();
     }
     _startStaticWait(targetTimeUsec, onComplete) {
-        this._indicator.setUpcomingTime(this._scheduleManager.nextPrayer);
+        this._indicator.setTime(this._scheduleManager.nextPrayer.time);
         this._scheduleTimeout(Math.ceil((targetTimeUsec - GLib.get_real_time()) / 1e6), () => onComplete());
     }
 
     _scheduleNextEvent() {
         const nextPrayer = this._scheduleManager.nextPrayer;
+
+        this._indicator.setPrayer(this._scheduleManager.nextPrayer);
+
         const nextPrayerUsec = nextPrayer.time.to_unix_usec();
         if (this._settings.reminder > 0) {
             const reminderTargetUsec = nextPrayerUsec - this._settings.reminder * 6e7;
@@ -111,17 +111,14 @@ export default class PrayerTime extends Extension {
     }
 
     _onReminder() {
-        const nextPrayer = this._scheduleManager.nextPrayer;
-        this._indicator.setReminder(nextPrayer.name, this._settings.reminder);
-        this._notifier.notifyReminder(nextPrayer);
+        this._indicator.setReminder(this._settings.reminder);
+        this._notifier.notifyReminder(this._scheduleManager.nextPrayer);
 
         this._scheduleTimeout(60, () => this._scheduleNextEvent());
     }
     async _onPrayerTime() {
-        const nextPrayer = this._scheduleManager.nextPrayer;
-
-        this._indicator.setArrival(nextPrayer.name);
-        this._notifier.notifyArrival(nextPrayer);
+        this._indicator.setArrival();
+        this._notifier.notifyArrival(this._scheduleManager.nextPrayer);
         if (this._settings.isSound) {
             try {
                 global.display.get_sound_player().play_from_file(this._soundFile, _("Call to prayer"), null);
@@ -143,16 +140,16 @@ export default class PrayerTime extends Extension {
         if (movedToNextDay) {
             this._menu.update(this._scheduleManager.schedule);
         } else {
-            this._menu.highlightItem(this._scheduleManager.nextPrayerIndex);
+            this._menu.setActivePrayer(this._scheduleManager.nextPrayerIndex);
         }
-        this._indicator.updateIcon(this._scheduleManager.nextPrayer.icon);
+        this._indicator.setPrayer(this._scheduleManager.nextPrayer);
 
         this._scheduleTimeout(60, () => this._scheduleNextEvent());
     }
 
     reInit() {
         this._stopTimer();
-        this._menu.destroy();
+        this._menu.clear();
         this._init();
     }
 
@@ -165,11 +162,12 @@ export default class PrayerTime extends Extension {
     }
 
     _onSymbolicIconsChanged() {
+        // TODO: BEGONE
         this._scheduleManager.refreshIcons();
         this._menu.updateIcons(this._scheduleManager.schedule);
         if (!this._scheduleManager.nextPrayer) return;
 
-        this._indicator.updateIcon(this._scheduleManager.nextPrayer.icon);
+        this._indicator.setPrayer(this._scheduleManager.nextPrayer);
     }
 
     _onIndicatorReposition() {
@@ -212,7 +210,7 @@ export default class PrayerTime extends Extension {
             this._notifier = null;
         }
         if (this._menu) {
-            this._menu.destroy();
+            this._menu.clear();
             this._menu = null;
         }
         if (this._indicator) {

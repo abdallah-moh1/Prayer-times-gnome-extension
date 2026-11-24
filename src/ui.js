@@ -3,72 +3,59 @@ import St from "gi://St";
 import Clutter from "gi://Clutter";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
-import { gettext as _ } from "resource:///org/gnome/shell/extensions/extension.js";
+import { gettext as _, ngettext } from "resource:///org/gnome/shell/extensions/extension.js";
 
 export class Menu extends PopupMenu.PopupMenu {
+    #settings;
+    #currentActiveIndex = 0;
+
     constructor(sourceActor, settings) {
         super(sourceActor, 0.5, St.Side.TOP);
-        this._settings = settings;
-        this._currentActiveIndex = null;
+        this.#settings = settings;
     }
 
     populate(schedule) {
         for (const prayer of schedule.prayers) {
             const menuItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, activate: false, hover: false });
-            const icon = new St.Icon({ gicon: prayer.icon, icon_size: 20 });
-            const nameLabel = new St.Label({ text: prayer.name, style_class: "prayer-name" });
-            const timeLabel = new St.Label({ text: prayer.time.format(this._settings.timeFormat) });
 
-            menuItem._prayerIcon = icon;
-            menuItem._prayerNameLabel = nameLabel;
-            menuItem._prayerTimeLabel = timeLabel;
-            menuItem.add_child(icon);
-            menuItem.add_child(nameLabel);
+            menuItem.add_child(new St.Icon({ gicon: prayer.icon, icon_size: 20 }));
+            menuItem.add_child(new St.Label({ text: prayer.name, style_class: "prayer-name" }));
             menuItem.add_child(new St.Widget({ x_expand: true }));
-            menuItem.add_child(timeLabel);
+            menuItem.add_child(new St.Label({ text: prayer.time.format(this.#settings.timeFormat) }));
 
             this.addMenuItem(menuItem);
         }
-        this.highlightItem(schedule.nextPrayerI);
+        this.setActivePrayer(schedule.nextPrayerI);
     }
 
-    highlightItem(i) {
-        const items = this._getMenuItems();
-        if (!items[i]) return;
+    setActivePrayer(i) {
+        const rows = this.box.get_children();
+        if (!rows[i]) return;
 
-        items[this._currentActiveIndex]?.remove_style_class_name("prayer-next");
+        rows[this.#currentActiveIndex]?.remove_style_class_name("prayer-next");
 
-        items[i].add_style_class_name("prayer-next");
-        this._currentActiveIndex = i;
+        rows[i].add_style_class_name("prayer-next");
+        this.#currentActiveIndex = i;
     }
 
     update(schedule) {
-        const rows = this._getMenuItems();
-        this.updateIcons(schedule);
-
-        for (let i = 0; i < rows.length; i++) {
+        // TODO: handle if schedule len not same as row len
+        const rows = this.box.get_children();
+        for (let i = 0; i < schedule.prayers.length; i++) {
+            const [, icon, nameLabel, , timeLabel] = rows[i].get_children();
             const prayer = schedule.prayers[i];
-            const row = rows[i];
-            if (!prayer) continue;
-            if (row._prayerNameLabel.text !== prayer.name) row._prayerNameLabel.set_text(prayer.name);
+
+            if (icon.gicon !== prayer.icon) icon.gicon = prayer.icon;
+            if (nameLabel.text !== prayer.name) nameLabel.set_text(prayer.name);
             const formattedTime = prayer.time.format(this._settings.timeFormat);
-            if (row._prayerTimeLabel.text !== formattedTime) row._prayerTimeLabel.set_text(formattedTime);
+            if (timeLabel.text !== formattedTime) timeLabel.set_text(formattedTime);
         }
-
-        this.highlightItem(schedule.nextPrayerI);
+        this.setActivePrayer(schedule.nextPrayerI);
     }
 
-    updateIcons(schedule) {
-        const rows = this._getMenuItems();
-
-        for (let i = 0; i < rows.length && i < schedule.prayers.length; i++) {
-            rows[i]._prayerIcon.gicon = schedule.prayers[i].icon;
-        }
-    }
-
-    destroy() {
+    clear() {
         this.removeAll();
-        this._currentActiveIndex = null;
+        this.#currentActiveIndex = null;
     }
 }
 
@@ -76,67 +63,57 @@ class IndicatorClass extends PanelMenu.Button {
     _init(extensionName, settings) {
         super._init(0.5, extensionName, true);
         this._settings = settings;
-        this._currentText = "...";
-        this._iconOnlyText = "...";
 
         this._box = new St.BoxLayout({
-            style: "padding: 0px 12px;",
+            style: "padding: 0px 12px; spacing: 6px;",
         });
-        this._icon = new St.Icon({ icon_size: 16, style: "margin-right: 6px" });
-        this._box.add_child(this._icon);
-        this._label = new St.Label({
+        this.add_child(this._box);
+
+        this._icon = new St.Icon({
+            icon_size: 16,
+        });
+        this._nameLabel = new St.Label({
             text: "...",
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._box.add_child(this._label);
-        this.add_child(this._box);
+        this._detailLabel = new St.Label({
+            text: "...",
+            y_align: Clutter.ActorAlign.CENTER,
+        });
 
-        this._indicatorStyleSignal = this._settings.connect("changed::indicator-style", () => this._applyIndicatorStyle());
+        this._box.add_child(this._icon);
+        this._box.add_child(this._nameLabel);
+        this._box.add_child(this._detailLabel);
+
         this._applyIndicatorStyle();
+        // FIXME: add changed::indicator-style signal
+    }
+
+    setPrayer(prayer) {
+        this._icon.gicon = prayer.icon;
+        this._nameLabel.text = prayer.name;
+    }
+
+    setCountdown(uSecLeft) {
+        const totalMinutes = Math.floor(uSecLeft / 6e7);
+        const minutes = totalMinutes % 60;
+        this._detailLabel.text = `${Math.floor(totalMinutes / 60)}h ${minutes < 10 ? "0" + minutes : minutes}m`;
+    }
+    setTime(prayerTime) {
+        this._detailLabel.text = prayerTime.format(this._settings.timeFormat);
+    }
+    setReminder(reminderDuration) {
+        // TODO: update name and parameters?
+        this._detailLabel.text = ngettext("in %d minute", "in %d minutes", reminderDuration).format(reminderDuration);
+    }
+    setArrival() {
+        this._detailLabel.text = _("time");
     }
 
     _applyIndicatorStyle() {
         const style = this._settings.indicatorStyle;
         this._icon.visible = style !== "name";
-        this._label.visible = true;
-        this._label.set_text(style === "icon" ? this._iconOnlyText : this._currentText);
-    }
-
-    _setDisplay(fullText, iconOnlyText) {
-        this._currentText = fullText;
-        this._iconOnlyText = iconOnlyText;
-        this._applyIndicatorStyle();
-    }
-
-    _setUpcomingDisplay(prayerName, value) {
-        this._setDisplay(_("%s %s").format(prayerName, value), value);
-    }
-
-    set text(value) {
-        this._setDisplay(value, value);
-    }
-
-    updateIcon(icon) {
-        if (this._icon) this._icon.gicon = icon;
-    }
-
-    setUpcomingCountdown(prayerName, uSecLeft) {
-        const totalMinutes = Math.floor(uSecLeft / 6e7);
-        const minutes = totalMinutes % 60;
-        this._setUpcomingDisplay(prayerName, `${Math.floor(totalMinutes / 60)}h ${minutes < 10 ? "0" + minutes : minutes}m`);
-    }
-    setUpcomingTime(prayer) {
-        this._setUpcomingDisplay(prayer.name, prayer.time.format(this._settings.timeFormat));
-    }
-
-    setReminder(prayerName, reminderDuration) {
-        const text = _("%s in %d minutes").format(prayerName, reminderDuration);
-        this._setDisplay(text, text);
-    }
-
-    setArrival(prayerName) {
-        const text = _("Time for %s").format(prayerName);
-        this._setDisplay(text, text);
+        this._nameLabel.visible = style !== "icon";
     }
 
     destroy() {
