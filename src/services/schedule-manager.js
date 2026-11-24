@@ -10,7 +10,7 @@ export class ScheduleManager {
     #settingsChangedId = null;
     static #SETTING_KEYS = new Set(["prayer-time-source", "auto-location", "latitude", "longitude", "preset-methods", "fajr-angle", "isha-angle", "asr-method", "high-latitude-adjustment", "include-sunnah", "mawaqit-slug"]);
     #metadata;
-    #schedule = { prayers: [], nextPrayerI: 0 };
+    #schedule = { prayers: [], nextPrayerIndex: 0 };
     #cancellable = null;
 
     constructor(settings, metadata, reInit) {
@@ -25,10 +25,10 @@ export class ScheduleManager {
         return this.#schedule;
     }
     get nextPrayer() {
-        return this.#schedule.prayers[this.#schedule.nextPrayerI];
+        return this.#schedule.prayers[this.#schedule.nextPrayerIndex];
     }
     get nextPrayerIndex() {
-        return this.#schedule.nextPrayerI;
+        return this.#schedule.nextPrayerIndex;
     }
 
     async buildSchedule() {
@@ -45,30 +45,30 @@ export class ScheduleManager {
             // edge case when new day but yesterday isha hasn't passed
             if (now.compare(yesterdayTimes.isha) < 0) {
                 const prayers = this.#buildPrayerList(yesterdayTimes);
-                this.#schedule = { prayers, nextPrayerI: prayers.length - 1 };
+                this.#schedule = { prayers, nextPrayerIndex: prayers.length - 1 };
                 return true;
             }
             // otherwise next is today fajr
-            this.#schedule = { prayers: this.#buildPrayerList(todayTimes), nextPrayerI: 0 };
+            this.#schedule = { prayers: this.#buildPrayerList(todayTimes), nextPrayerIndex: 0 };
             return true;
         }
 
         // after today isha
         if (now.compare(todayTimes.isha) >= 0) {
             const tomorrowTimes = await this.#getTimes(provider, now.add_days(1));
-            this.#schedule = { prayers: this.#buildPrayerList(tomorrowTimes), nextPrayerI: 0 };
+            this.#schedule = { prayers: this.#buildPrayerList(tomorrowTimes), nextPrayerIndex: 0 };
             return true;
         }
 
         // between today fajr and isha
         const prayers = this.#buildPrayerList(todayTimes);
-        this.#schedule = { prayers, nextPrayerI: prayers.findIndex((p) => p.time.compare(now) > 0) };
+        this.#schedule = { prayers, nextPrayerIndex: prayers.findIndex((p) => p.time.compare(now) > 0) };
         return true;
     }
 
     async advanceToNextPrayer() {
-        if (this.#schedule.nextPrayerI < this.#schedule.prayers.length - 1) {
-            this.#schedule.nextPrayerI++;
+        if (this.#schedule.nextPrayerIndex < this.#schedule.prayers.length - 1) {
+            this.#schedule.nextPrayerIndex++;
             return false;
         }
 
@@ -76,7 +76,7 @@ export class ScheduleManager {
         const provider = await this.#getProvider(cancellable);
         if (cancellable.is_cancelled()) return false;
         const tomorrowTimes = provider.getTimes(this.#schedule.prayers[0].time.add_days(1));
-        this.#schedule = { prayers: this.#buildPrayerList(tomorrowTimes), nextPrayerI: 0 };
+        this.#schedule = { prayers: this.#buildPrayerList(tomorrowTimes), nextPrayerIndex: 0 };
         return true;
     }
 
