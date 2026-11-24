@@ -86,7 +86,7 @@ class IndicatorClass extends PanelMenu.Button {
         this._box.add_child(this._detailLabel);
 
         this._applyIndicatorStyle();
-        // FIXME: add changed::indicator-style signal
+        this._indicatorStyleSignal = this._settings.connect("changed::indicator-style", () => this._applyIndicatorStyle());
     }
 
     setPrayer(prayer) {
@@ -102,9 +102,8 @@ class IndicatorClass extends PanelMenu.Button {
     setTime(prayerTime) {
         this._detailLabel.text = prayerTime.format(this._settings.timeFormat);
     }
-    setReminder(reminderDuration) {
-        // TODO: update name and parameters?
-        this._detailLabel.text = ngettext("in %d minute", "in %d minutes", reminderDuration).format(reminderDuration);
+    setReminder(reminderMinutes) {
+        this._detailLabel.text = ngettext("in %d minute", "in %d minutes", reminderMinutes).format(reminderMinutes);
     }
     setArrival() {
         this._detailLabel.text = _("time");

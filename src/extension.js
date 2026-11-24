@@ -26,11 +26,18 @@ export default class PrayerTime extends Extension {
         this._init();
 
         this._settingSignals = [
-            this._settings.connect("changed::display-mode", () => this._onDisplayModeChanged()),
-            this._settings.connect("changed::use-symbolic-icons", () => this._onSymbolicIconsChanged()),
-            this._settings.connect("changed::reminder", () => this.reInit()), // TODO: only refresh timeout
-            this._settings.connect("changed::indicator-alignment", () => this._onIndicatorReposition()),
-            this._settings.connect("changed::indicator-order", () => this._onIndicatorReposition()),
+            this._settings.connect("changed::display-mode", () => this.reInit()),
+            this._settings.connect("changed::use-symbolic-icons", () => this.reInit()),
+            this._settings.connect("changed::reminder", () => this.reInit()),
+            this._settings.connect("changed::indicator-alignment", () => {
+                const container = this._indicator.container;
+                container.get_parent().remove_child(container);
+                Main.panel[`_${this._settings.indicatorAlignment}Box`]?.insert_child_at_index(container, this._settings.indicatorOrder);
+            }),
+            this._settings.connect("changed::indicator-order", () => {
+                const container = this._indicator.container;
+                container.get_parent().set_child_at_index(container, this._settings.indicatorOrder);
+            }),
         ];
 
         // update extension on system wake
@@ -120,11 +127,7 @@ export default class PrayerTime extends Extension {
         this._indicator.setArrival();
         this._notifier.notifyArrival(this._scheduleManager.nextPrayer);
         if (this._settings.isSound) {
-            try {
-                global.display.get_sound_player().play_from_file(this._soundFile, _("Call to prayer"), null);
-            } catch (e) {
-                console.error(`[${this.metadata.name}]: Failed to play prayer audio:`, e);
-            }
+            global.display.get_sound_player().play_from_file(this._soundFile, _("Call to prayer"), null);
         }
 
         let movedToNextDay;
@@ -151,37 +154,6 @@ export default class PrayerTime extends Extension {
         this._stopTimer();
         this._menu.clear();
         this._init();
-    }
-
-    _onDisplayModeChanged() {
-        if (!this._scheduleManager?.nextPrayer) return;
-
-        this._stopTimer();
-        this._startTimer = this._settings.displayMode === "countdown" ? this._startCountdown : this._startStaticWait;
-        this._scheduleNextEvent();
-    }
-
-    _onSymbolicIconsChanged() {
-        // TODO: BEGONE
-        this._scheduleManager.refreshIcons();
-        this._menu.updateIcons(this._scheduleManager.schedule);
-        if (!this._scheduleManager.nextPrayer) return;
-
-        this._indicator.setPrayer(this._scheduleManager.nextPrayer);
-    }
-
-    _onIndicatorReposition() {
-        const container = this._indicator.container;
-        const currentParent = container.get_parent();
-        const targetBox = Main.panel[`_${this._settings.indicatorAlignment}Box`];
-        if (!targetBox) return;
-
-        if (currentParent === targetBox) {
-            targetBox.set_child_at_index(container, this._settings.indicatorOrder);
-        } else {
-            currentParent?.remove_child(container);
-            targetBox.insert_child_at_index(container, this._settings.indicatorOrder);
-        }
     }
 
     disable() {

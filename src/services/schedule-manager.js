@@ -80,10 +80,6 @@ export class ScheduleManager {
         return true;
     }
 
-    refreshIcons() {
-        for (const prayer of this.#schedule.prayers) prayer.icon = this.#createIcon(prayer.id);
-    }
-
     #renewCancellable() {
         this.#cancellable?.cancel();
         this.#cancellable = new Gio.Cancellable();
