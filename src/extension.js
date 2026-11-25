@@ -59,8 +59,6 @@ export default class PrayerTime extends Extension {
 
         this._menu.populate(this._scheduleManager.schedule);
 
-        this._soundFile = Gio.File.new_for_path(this.path + "/assets/audio/athan.ogg"); // TODO: don't include if sound disabled
-
         this._startTimer = this._settings.displayMode === "countdown" ? this._startCountdown : this._startStaticWait;
         this._scheduleNextEvent();
     }
@@ -129,6 +127,7 @@ export default class PrayerTime extends Extension {
         this._indicator.setArrival();
         this._notifier.notifyArrival(this._scheduleManager.nextPrayer);
         if (this._settings.isSound) {
+            this._soundFile ??= Gio.File.new_for_path(this.path + "/assets/audio/athan.ogg");
             global.display.get_sound_player().play_from_file(this._soundFile, _("Call to prayer"), null);
         }
 
