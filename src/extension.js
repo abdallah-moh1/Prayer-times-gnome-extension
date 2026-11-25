@@ -47,20 +47,14 @@ export default class PrayerTime extends Extension {
     }
 
     async _init() {
-        try {
-            const ready = await this._scheduleManager.buildSchedule();
-            if (!ready) return;
+        if (!(await this._scheduleManager.buildSchedule())) return;
 
-            this._menu.populate(this._scheduleManager.schedule);
+        this._menu.populate(this._scheduleManager.schedule);
 
-            this._soundFile = Gio.File.new_for_path(this.path + "/assets/audio/athan.ogg"); // TODO: don't include if sound disabled
+        this._soundFile = Gio.File.new_for_path(this.path + "/assets/audio/athan.ogg"); // TODO: don't include if sound disabled
 
-            this._startTimer = this._settings.displayMode === "countdown" ? this._startCountdown : this._startStaticWait;
-            this._scheduleNextEvent();
-        } catch (e) {
-            if (e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) return;
-            console.error(`[${this.metadata.name}]: Init error:`, e);
-        }
+        this._startTimer = this._settings.displayMode === "countdown" ? this._startCountdown : this._startStaticWait;
+        this._scheduleNextEvent();
     }
 
     _stopTimer() {
@@ -130,17 +124,7 @@ export default class PrayerTime extends Extension {
             global.display.get_sound_player().play_from_file(this._soundFile, _("Call to prayer"), null);
         }
 
-        let movedToNextDay;
-        try {
-            movedToNextDay = await this._scheduleManager.advanceToNextPrayer();
-        } catch (e) {
-            if (e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) return;
-            console.error(`[${this.metadata.name}]: Failed to advance prayer schedule:`, e);
-            // TODO: retry
-            return;
-        }
-
-        if (movedToNextDay) {
+        if (await this._scheduleManager.advanceToNextPrayer()) {
             this._menu.update(this._scheduleManager.schedule);
         } else {
             this._menu.setActivePrayer(this._scheduleManager.nextPrayerIndex);

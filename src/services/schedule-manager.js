@@ -1,9 +1,89 @@
-import GLib from "gi://GLib";
+import Geoclue from "gi://Geoclue";
 import Gio from "gi://Gio";
+import GLib from "gi://GLib";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { gettext as _ } from "resource:///org/gnome/shell/extensions/extension.js";
-import { MawaqitClient } from "./online/mawaqit-client.js";
-import { CalculationProvider } from "./local/calculation-provider.js";
+import { MawaqitClient } from "./mawaqit-client.js";
+import { PrayerTimesCalculator } from "./prayer-times-calculator.js";
+
+class TimeFetcher {
+    #settings;
+    #extensionName;
+    #cancellable;
+    #timezone = GLib.TimeZone.new_local();
+    #mawaqit = null;
+    #isFallbackToLocal = false;
+    #location = null;
+
+    constructor(settings, extensionName, cancellable) {
+        this.#settings = settings;
+        this.#extensionName = extensionName;
+        this.#cancellable = cancellable;
+    }
+
+    get isCancelled() {
+        return this.#cancellable.is_cancelled();
+    }
+
+    async get(dateTime) {
+        if (this.isCancelled) throw new Error("Cancelled");
+
+        const ymd = dateTime.get_ymd();
+
+        if (this.#settings.prayerTimeSource === "mawaqit" && !this.#isFallbackToLocal) {
+            try {
+                this.#mawaqit ??= await MawaqitClient.create(this.#settings, this.#extensionName, this.#cancellable);
+                return await this.#mawaqit.getTimes(ymd);
+            } catch (e) {
+                if (this.isCancelled) throw e;
+                this.#isFallbackToLocal = true;
+                const locationType = this.#settings.isAutoLocation ? _("automatic location detection") : _("manual location");
+                Main.notify(this.#extensionName, _("Mawaqit client failed, defaulting to local calculations with %s: %s").format(locationType, e.message));
+            }
+        }
+
+        if (!this.#location) {
+            if (this.#settings.isAutoLocation) {
+                try {
+                    this.#location = await this.#getGeoclueLocation();
+                } catch (e) {
+                    if (this.isCancelled) throw e;
+                    Main.notify(this.#extensionName, _("Failed to find location automatically. Defaulting to manual location: %s").format(e.message));
+                }
+            }
+            this.#location ??= { latitude: this.#settings.latitude, longitude: this.#settings.longitude };
+        }
+        return new PrayerTimesCalculator(
+            ymd,
+            this.#timezone,
+            this.#location,
+            {
+                id: this.#settings.presetMethod,
+                fajr: this.#settings.fajrAngle,
+                isha: this.#settings.ishaAngle,
+            },
+            this.#settings.asrMethod,
+            this.#settings.highLatAdjustment,
+        );
+    }
+    #getGeoclueLocation() {
+        return new Promise((resolve, reject) => {
+            Geoclue.Simple.new_with_thresholds(this.#extensionName, Geoclue.AccuracyLevel.NEIGHBORHOOD, 600, 5000, this.#cancellable, (_source, result) => {
+                let proxy = null;
+                try {
+                    proxy = Geoclue.Simple.new_with_thresholds_finish(result);
+                    const location = proxy?.get_location();
+                    if (!location) throw new Error(_("Automatic location is unavailable."));
+                    resolve({ latitude: location.latitude, longitude: location.longitude });
+                } catch (e) {
+                    reject(e);
+                } finally {
+                    proxy?.get_client()?.call_stop(null, null);
+                }
+            });
+        });
+    }
+}
 
 export class ScheduleManager {
     #settings;
@@ -32,38 +112,39 @@ export class ScheduleManager {
     }
 
     async buildSchedule() {
-        const cancellable = this.#renewCancellable();
-        const provider = await this.#getProvider(cancellable);
-        if (cancellable.is_cancelled()) return false;
+        const fetcher = this.#createFetcher();
+        try {
+            const now = GLib.DateTime.new_now_local();
+            const todayTimes = await fetcher.get(now);
 
-        const now = GLib.DateTime.new_now_local();
-        const todayTimes = await this.#getTimes(provider, now);
+            let prayers, nextPrayerIndex;
 
-        // before today fajr
-        if (now.compare(todayTimes.fajr) < 0) {
-            const yesterdayTimes = await this.#getTimes(provider, now.add_days(-1));
-            // edge case when new day but yesterday isha hasn't passed
-            if (now.compare(yesterdayTimes.isha) < 0) {
-                const prayers = this.#buildPrayerList(yesterdayTimes);
-                this.#schedule = { prayers, nextPrayerIndex: prayers.length - 1 };
-                return true;
+            if (now.compare(todayTimes.fajr) < 0) {
+                const yesterdayTimes = await fetcher.get(now.add_days(-1));
+                // edge case: new day, but yesterday's isha hasn't passed
+                if (now.compare(yesterdayTimes.isha) < 0) {
+                    prayers = this.#buildPrayerList(yesterdayTimes);
+                    nextPrayerIndex = prayers.length - 1;
+                } else {
+                    prayers = this.#buildPrayerList(todayTimes);
+                    nextPrayerIndex = 0;
+                }
+            } else if (now.compare(todayTimes.isha) >= 0) {
+                const tomorrowTimes = await fetcher.get(now.add_days(1));
+                prayers = this.#buildPrayerList(tomorrowTimes);
+                nextPrayerIndex = 0;
+            } else {
+                prayers = this.#buildPrayerList(todayTimes);
+                nextPrayerIndex = prayers.findIndex((p) => p.time.compare(now) > 0);
             }
-            // otherwise next is today fajr
-            this.#schedule = { prayers: this.#buildPrayerList(todayTimes), nextPrayerIndex: 0 };
-            return true;
-        }
 
-        // after today isha
-        if (now.compare(todayTimes.isha) >= 0) {
-            const tomorrowTimes = await this.#getTimes(provider, now.add_days(1));
-            this.#schedule = { prayers: this.#buildPrayerList(tomorrowTimes), nextPrayerIndex: 0 };
+            if (fetcher.isCancelled) return false;
+            this.#schedule = { prayers, nextPrayerIndex };
             return true;
+        } catch (e) {
+            if (!fetcher.isCancelled) console.error(`[${this.#metadata.name}]: Failed to build schedule:`, e);
         }
-
-        // between today fajr and isha
-        const prayers = this.#buildPrayerList(todayTimes);
-        this.#schedule = { prayers, nextPrayerIndex: prayers.findIndex((p) => p.time.compare(now) > 0) };
-        return true;
+        return false;
     }
 
     async advanceToNextPrayer() {
@@ -72,44 +153,22 @@ export class ScheduleManager {
             return false;
         }
 
-        const cancellable = this.#renewCancellable();
-        const provider = await this.#getProvider(cancellable);
-        if (cancellable.is_cancelled()) return false;
-        const tomorrowTimes = provider.getTimes(this.#schedule.prayers[0].time.add_days(1));
-        this.#schedule = { prayers: this.#buildPrayerList(tomorrowTimes), nextPrayerIndex: 0 };
-        return true;
+        const fetcher = this.#createFetcher();
+        try {
+            const tomorrowTimes = await fetcher.get(this.#schedule.prayers[0].time.add_days(1));
+            if (fetcher.isCancelled) return false;
+            this.#schedule = { prayers: this.#buildPrayerList(tomorrowTimes), nextPrayerIndex: 0 };
+            return true;
+        } catch (e) {
+            if (!fetcher.isCancelled) console.error(`[${this.#metadata.name}]: Failed to advance to new day:`, e);
+        }
+        return false;
     }
 
-    #renewCancellable() {
+    #createFetcher() {
         this.#cancellable?.cancel();
         this.#cancellable = new Gio.Cancellable();
-        return this.#cancellable;
-    }
-
-    async #getProvider(cancellable) {
-        // to optimise for buildSchedule(), store all cache in provider class and provide getTimes() method
-        if (this.#settings.prayerTimeSource === "mawaqit") {
-            try {
-                return await MawaqitClient.create(this.#settings, this.#metadata.name, cancellable);
-            } catch (e) {
-                const locationType = this.#settings.isAutoLocation ? "automatic location detection" : "manual location";
-                Main.notify(this.#metadata.name, _("Failed to connect to Mawaqit. Defaulting to local calculations with %s: %s").format(locationType, e.message));
-            }
-        }
-        return await CalculationProvider.init(this.#settings, this.#metadata.name, cancellable);
-    }
-
-    async #getTimes(provider, dateTime) {
-        const ymd = dateTime.get_ymd();
-        try {
-            return await provider.getTimes(ymd);
-        } catch (e) {
-            if (this.#settings.prayerTimeSource !== "mawaqit") throw e;
-
-            Main.notify(this.#metadata.name, _("Mawaqit prayer data is unavailable for this date. Defaulting to local calculations: %s").format(e.message));
-            const localProvider = await CalculationProvider.init(this.#settings, this.#metadata.name);
-            return localProvider.getTimes(ymd);
-        }
+        return new TimeFetcher(this.#settings, this.#metadata.name, this.#cancellable);
     }
 
     #buildPrayerList(prayerTimes) {
