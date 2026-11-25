@@ -87,8 +87,6 @@ class TimeFetcher {
 
 export class ScheduleManager {
     #settings;
-    #settingsChangedId = null;
-    static #SETTING_KEYS = new Set(["prayer-time-source", "auto-location", "latitude", "longitude", "preset-methods", "fajr-angle", "isha-angle", "asr-method", "high-latitude-adjustment", "include-sunnah", "mawaqit-slug"]);
     #metadata;
     #schedule = { prayers: [], nextPrayerIndex: 0 };
     #cancellable = null;
@@ -96,9 +94,6 @@ export class ScheduleManager {
     constructor(settings, metadata, reInit) {
         this.#settings = settings;
         this.#metadata = metadata;
-        this.#settingsChangedId = settings.connect("changed", (_settings, key) => {
-            if (ScheduleManager.#SETTING_KEYS.has(key)) reInit();
-        });
     }
 
     get schedule() {
@@ -191,10 +186,6 @@ export class ScheduleManager {
     }
 
     destroy() {
-        if (this.#settingsChangedId) {
-            this.#settings.disconnect(this.#settingsChangedId);
-            this.#settingsChangedId = null;
-        }
         if (this.#cancellable) {
             this.#cancellable.cancel();
             this.#cancellable = null;

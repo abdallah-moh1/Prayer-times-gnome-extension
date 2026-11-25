@@ -25,20 +25,28 @@ export default class PrayerTime extends Extension {
 
         this._init();
 
-        this._settingSignals = [
-            this._settings.connect("changed::display-mode", () => this.reInit()),
-            this._settings.connect("changed::use-symbolic-icons", () => this.reInit()),
-            this._settings.connect("changed::reminder", () => this.reInit()),
-            this._settings.connect("changed::indicator-alignment", () => {
-                const container = this._indicator.container;
-                container.get_parent().remove_child(container);
-                Main.panel[`_${this._settings.indicatorAlignment}Box`]?.insert_child_at_index(container, this._settings.indicatorOrder);
-            }),
-            this._settings.connect("changed::indicator-order", () => {
-                const container = this._indicator.container;
-                container.get_parent().set_child_at_index(container, this._settings.indicatorOrder);
-            }),
-        ];
+        this._settings.connectGSettingSignal("changed", (_settings, key) => {
+            switch (key) {
+                case "version-cache":
+                case "notify-prayer":
+                case "sound-player":
+                    return;
+                case "indicator-alignment": {
+                    const container = this._indicator.container;
+                    container.get_parent().remove_child(container);
+                    Main.panel[`_${this._settings.indicatorAlignment}Box`]?.insert_child_at_index(container, this._settings.indicatorOrder);
+                    return;
+                }
+                case "indicator-order": {
+                    const container = this._indicator.container;
+                    container.get_parent().set_child_at_index(container, this._settings.indicatorOrder);
+                    return;
+                }
+                default:
+                    this.reInit();
+            }
+        });
+        this._settings.connectDesktopSignal("changed::clock-format", () => this.reInit());
 
         // update extension on system wake
         this._wakeSignalId = Gio.DBus.system.signal_subscribe("org.freedesktop.login1", "org.freedesktop.login1.Manager", "PrepareForSleep", "/org/freedesktop/login1", null, Gio.DBusSignalFlags.NONE, (_connection, _sender, _path, _interface, _signal, params) => {
@@ -149,10 +157,7 @@ export default class PrayerTime extends Extension {
         }
 
         if (this._settings) {
-            if (this._settingSignals) {
-                this._settingSignals.forEach((id) => id && this._settings.disconnect(id));
-                this._settingSignals = null;
-            }
+            this._settings.destroy();
             this._settings = null;
         }
 

@@ -5,6 +5,8 @@ import { gettext as _ } from "resource:///org/gnome/shell/extensions/extension.j
 export class Settings {
     #gSettings = null;
     #desktopSettings = null;
+    #gSettingsSignal = null;
+    #desktopSignal = null;
 
     static {
         const settingsSchema = [
@@ -104,17 +106,20 @@ export class Settings {
         }
     }
 
-    connect(signal, callback) {
-        return this.#gSettings.connect(signal, callback);
-    }
-    connectDesktop(signal, callback) {
-        return this.#desktopSettings.connect(signal, callback);
+    connectGSettingSignal(signal, callback) {
+        this.#gSettingsSignal = this.#gSettings.connect(signal, callback);
     }
 
-    disconnect(id) {
-        this.#gSettings.disconnect(id);
+    connectDesktopSignal(signal, callback) {
+        this.#desktopSignal = this.#desktopSettings.connect(signal, callback);
     }
-    disconnectDesktop(id) {
-        this.#desktopSettings.disconnect(id);
+
+    destroy() {
+        this.#gSettings?.disconnect(this.#gSettingsSignal);
+        this.#gSettingsSignal = null;
+        this.#gSettings = null;
+        this.#desktopSettings?.disconnect(this.#desktopSignal);
+        this.#desktopSignal = null;
+        this.#desktopSettings = null;
     }
 }

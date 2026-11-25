@@ -67,26 +67,28 @@ class IndicatorClass extends PanelMenu.Button {
         this._box = new St.BoxLayout({
             style: "padding: 0px 12px; spacing: 6px;",
         });
-        this.add_child(this._box);
 
-        this._icon = new St.Icon({
-            icon_size: 16,
-        });
-        this._nameLabel = new St.Label({
-            text: "...",
-            y_align: Clutter.ActorAlign.CENTER,
-        });
+        const style = this._settings.indicatorStyle;
+        if (style !== "name") {
+            this._icon = new St.Icon({
+                icon_size: 16,
+            });
+            this._box.add_child(this._icon);
+        }
+        if (style !== "icon") {
+            this._nameLabel = new St.Label({
+                text: "...",
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            this._box.add_child(this._nameLabel);
+        }
         this._detailLabel = new St.Label({
             text: "...",
             y_align: Clutter.ActorAlign.CENTER,
         });
-
-        this._box.add_child(this._icon);
-        this._box.add_child(this._nameLabel);
         this._box.add_child(this._detailLabel);
 
-        this._applyIndicatorStyle();
-        this._indicatorStyleSignal = this._settings.connect("changed::indicator-style", () => this._applyIndicatorStyle());
+        this.add_child(this._box);
     }
 
     setPrayer(prayer) {
@@ -107,12 +109,6 @@ class IndicatorClass extends PanelMenu.Button {
     }
     setArrival() {
         this._detailLabel.text = _("time");
-    }
-
-    _applyIndicatorStyle() {
-        const style = this._settings.indicatorStyle;
-        this._icon.visible = style !== "name";
-        this._nameLabel.visible = style !== "icon";
     }
 
     destroy() {
