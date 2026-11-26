@@ -73,20 +73,15 @@ class IndicatorClass extends PanelMenu.Button {
             style: "padding: 0px 12px; spacing: 0.27em;",
         });
 
-        const style = this._settings.indicatorStyle;
-        if (style !== "name") {
-            this._icon = new St.Icon({
-                icon_size: 16,
-            });
-            this._box.add_child(this._icon);
-        }
-        if (style !== "icon") {
-            this._nameLabel = new St.Label({
-                text: "...",
-                y_align: Clutter.ActorAlign.CENTER,
-            });
-            this._box.add_child(this._nameLabel);
-        }
+        this._icon = new St.Icon({
+            icon_size: 16,
+        });
+        this._box.add_child(this._icon);
+        this._nameLabel = new St.Label({
+            text: "...",
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._box.add_child(this._nameLabel);
         this._detailLabel = new St.Label({
             text: "...",
             y_align: Clutter.ActorAlign.CENTER,
@@ -94,11 +89,18 @@ class IndicatorClass extends PanelMenu.Button {
         this._box.add_child(this._detailLabel);
 
         this.add_child(this._box);
+        this.updateStyle();
+    }
+
+    updateStyle() {
+        const style = this._settings.indicatorStyle;
+        this._icon.visible = style !== "name";
+        this._nameLabel.visible = style !== "icon";
     }
 
     setPrayer(prayer) {
-        if (this._icon) this._icon.gicon = prayer.icon;
-        if (this._nameLabel) this._nameLabel.text = prayer.name;
+        this._icon.gicon = prayer.icon;
+        this._nameLabel.text = prayer.name;
     }
 
     setCountdown(minsLeft) {

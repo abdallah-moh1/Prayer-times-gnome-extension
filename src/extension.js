@@ -30,6 +30,9 @@ export default class PrayerTime extends Extension {
                 case "notify-prayer":
                 case "sound-player":
                     return;
+                case "indicator-style":
+                    this._indicator.updateStyle();
+                    return;
                 case "indicator-alignment": {
                     const container = this._indicator.container;
                     container.get_parent().remove_child(container);
