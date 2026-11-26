@@ -50,7 +50,7 @@ export class Menu extends PopupMenu.PopupMenu {
             const [, icon, nameLabel, , timeLabel] = rows[i].get_children();
             const prayer = schedule.prayers[i];
 
-            if (icon.gicon !== prayer.icon) icon.gicon = prayer.icon;
+            if (!icon.gicon.equal(prayer.icon)) icon.gicon = prayer.icon;
             if (nameLabel.text !== prayer.name) nameLabel.set_text(prayer.name);
             const formattedTime = prayer.time.format(this.#settings.timeFormat);
             if (timeLabel.text !== formattedTime) timeLabel.set_text(formattedTime);
