@@ -8,16 +8,16 @@ import { PrayerTimesCalculator } from "./providers/prayer-times-calculator.js";
 
 class TimeFetcher {
     #settings;
-    #extensionName;
+    #metadata;
     #cancellable;
     #timezone = GLib.TimeZone.new_local();
     #mawaqit = null;
     #isFallbackToLocal = false;
     #location = null;
 
-    constructor(settings, extensionName, cancellable) {
+    constructor(settings, metadata, cancellable) {
         this.#settings = settings;
-        this.#extensionName = extensionName;
+        this.#metadata = metadata;
         this.#cancellable = cancellable;
     }
 
@@ -32,13 +32,13 @@ class TimeFetcher {
 
         if (this.#settings.prayerTimeSource === "mawaqit" && !this.#isFallbackToLocal) {
             try {
-                this.#mawaqit ??= await MawaqitClient.create(this.#settings, this.#extensionName, this.#cancellable);
+                this.#mawaqit ??= await MawaqitClient.create(this.#settings, this.#metadata.name, this.#cancellable);
                 return await this.#mawaqit.getTimes(ymd);
             } catch (e) {
                 if (this.isCancelled) throw e;
                 this.#isFallbackToLocal = true;
                 const locationType = this.#settings.isAutoLocation ? _("automatic location detection") : _("manual location");
-                Main.notify(this.#extensionName, _("Mawaqit client failed, defaulting to local calculations with %s: %s").format(locationType, e.message));
+                Main.notify(this.#metadata.name, _("Mawaqit client failed, defaulting to local calculations with %s: %s").format(locationType, e.message));
             }
         }
 
@@ -48,7 +48,7 @@ class TimeFetcher {
                     this.#location = await this.#getGeoclueLocation();
                 } catch (e) {
                     if (this.isCancelled) throw e;
-                    Main.notify(this.#extensionName, _("Failed to find location automatically. Defaulting to manual location: %s").format(e.message));
+                    Main.notify(this.#metadata.name, _("Failed to find location automatically. Defaulting to manual location: %s").format(e.message));
                 }
             }
             this.#location ??= { latitude: this.#settings.latitude, longitude: this.#settings.longitude };
@@ -68,7 +68,7 @@ class TimeFetcher {
     }
     #getGeoclueLocation() {
         return new Promise((resolve, reject) => {
-            Geoclue.Simple.new_with_thresholds(this.#extensionName, Geoclue.AccuracyLevel.NEIGHBORHOOD, 600, 5000, this.#cancellable, (_source, result) => {
+            Geoclue.Simple.new_with_thresholds(this.#metadata["settings-schema"], Geoclue.AccuracyLevel.NEIGHBORHOOD, 600, 5000, this.#cancellable, (_source, result) => {
                 let proxy = null;
                 try {
                     proxy = Geoclue.Simple.new_with_thresholds_finish(result);
@@ -163,7 +163,7 @@ export class ScheduleManager {
     #createFetcher() {
         this.#cancellable?.cancel();
         this.#cancellable = new Gio.Cancellable();
-        return new TimeFetcher(this.#settings, this.#metadata.name, this.#cancellable);
+        return new TimeFetcher(this.#settings, this.#metadata, this.#cancellable);
     }
 
     #buildPrayerList(prayerTimes) {
