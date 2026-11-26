@@ -25,7 +25,7 @@ export class Menu extends PopupMenu.PopupMenu {
 
             this.addMenuItem(menuItem);
         }
-        this.setActivePrayer(schedule.nextPrayerI);
+        this.setActivePrayer(schedule.nextPrayerIndex);
     }
 
     setActivePrayer(i) {
@@ -50,7 +50,7 @@ export class Menu extends PopupMenu.PopupMenu {
             const formattedTime = prayer.time.format(this._settings.timeFormat);
             if (timeLabel.text !== formattedTime) timeLabel.set_text(formattedTime);
         }
-        this.setActivePrayer(schedule.nextPrayerI);
+        this.setActivePrayer(schedule.nextPrayerIndex);
     }
 
     clear() {
