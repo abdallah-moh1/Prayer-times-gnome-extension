@@ -3,8 +3,8 @@ import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { gettext as _ } from "resource:///org/gnome/shell/extensions/extension.js";
-import { MawaqitClient } from "./mawaqit-client.js";
-import { PrayerTimesCalculator } from "./prayer-times-calculator.js";
+import { MawaqitClient } from "./providers/mawaqit-client.js";
+import { PrayerTimesCalculator } from "./providers/prayer-times-calculator.js";
 
 class TimeFetcher {
     #settings;

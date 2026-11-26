@@ -4,8 +4,8 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { Extension, gettext as _ } from "resource:///org/gnome/shell/extensions/extension.js";
 import { Settings } from "./utils/settings.js";
 import { Menu, Indicator } from "./ui.js";
-import { NotificationManager } from "./utils/notification-manager.js";
-import { ScheduleManager } from "./services/schedule-manager.js";
+import { NotificationManager } from "./notification-manager.js";
+import { ScheduleManager } from "./schedule-manager.js";
 
 export default class PrayerTime extends Extension {
     enable() {
