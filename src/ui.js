@@ -39,7 +39,12 @@ export class Menu extends PopupMenu.PopupMenu {
     }
 
     update(schedule) {
-        // TODO: handle if schedule len not same as row len
+        if (rows.length !== schedule.prayers.length) {
+            this.clear();
+            this.populate(schedule);
+            return;
+        }
+
         const rows = this.box.get_children();
         for (let i = 0; i < schedule.prayers.length; i++) {
             const [, icon, nameLabel, , timeLabel] = rows[i].get_children();
@@ -47,7 +52,7 @@ export class Menu extends PopupMenu.PopupMenu {
 
             if (icon.gicon !== prayer.icon) icon.gicon = prayer.icon;
             if (nameLabel.text !== prayer.name) nameLabel.set_text(prayer.name);
-            const formattedTime = prayer.time.format(this._settings.timeFormat);
+            const formattedTime = prayer.time.format(this.#settings.timeFormat);
             if (timeLabel.text !== formattedTime) timeLabel.set_text(formattedTime);
         }
         this.setActivePrayer(schedule.nextPrayerIndex);
@@ -92,8 +97,8 @@ class IndicatorClass extends PanelMenu.Button {
     }
 
     setPrayer(prayer) {
-        this._icon.gicon = prayer.icon;
-        this._nameLabel.text = prayer.name;
+        if (this._icon) this._icon.gicon = prayer.icon;
+        if (this._nameLabel) this._nameLabel.text = prayer.name;
     }
 
     setCountdown(minsLeft) {
