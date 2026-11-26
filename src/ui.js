@@ -65,7 +65,7 @@ class IndicatorClass extends PanelMenu.Button {
         this._settings = settings;
 
         this._box = new St.BoxLayout({
-            style: "padding: 0px 12px; spacing: 6px;",
+            style: "padding: 0px 12px; spacing: 0.27em;",
         });
 
         const style = this._settings.indicatorStyle;
