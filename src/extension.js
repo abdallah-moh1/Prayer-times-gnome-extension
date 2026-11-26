@@ -47,7 +47,6 @@ export default class PrayerTime extends Extension {
             }
         });
         this._settings.connectDesktopSignal("changed::clock-format", () => this.reInit());
-
         // update extension on system wake
         this._wakeSignalId = Gio.DBus.system.signal_subscribe("org.freedesktop.login1", "org.freedesktop.login1.Manager", "PrepareForSleep", "/org/freedesktop/login1", null, Gio.DBusSignalFlags.NONE, (_connection, _sender, _path, _interface, _signal, params) => {
             if (!params.get_child_value(0).get_boolean()) this.reInit();
@@ -58,8 +57,6 @@ export default class PrayerTime extends Extension {
         if (!(await this._scheduleManager.buildSchedule())) return;
 
         this._menu.populate(this._scheduleManager.schedule);
-
-        this._startTimer = this._settings.displayMode === "countdown" ? this._startCountdown : this._startStaticWait;
         this._scheduleNextEvent();
     }
 
@@ -79,66 +76,63 @@ export default class PrayerTime extends Extension {
         });
     }
 
-    _startCountdown(targetTimeUsec, onComplete) {
-        const tick = () => {
-            const uSecLeft = targetTimeUsec - GLib.get_real_time();
+    _scheduleNextEvent() {
+        const nextPrayer = this._scheduleManager.nextPrayer;
+        this._indicator.setPrayer(nextPrayer);
 
-            // 3 sec buffer
-            if (uSecLeft <= 3e6) {
+        const nowSec = Math.round(GLib.get_real_time() / 1e6);
+        const prayerSec = nextPrayer.time.to_unix();
+        const reminderMins = this._settings.reminder;
+
+        const reminderTimeSec = prayerSec - reminderMins * 60;
+        const isReminder = reminderMins > 0 && reminderTimeSec > nowSec;
+        const targetSec = isReminder ? reminderTimeSec : prayerSec;
+
+        const onComplete = async () => {
+            if (isReminder) this._onReminder(nextPrayer);
+            else await this._onPrayerTime(nextPrayer);
+
+            this._scheduleTimeout(60, () => this._scheduleNextEvent());
+        };
+
+        if (this._settings.displayMode === "countdown") {
+            this._startCountdownTimer(targetSec, prayerSec, onComplete);
+        } else {
+            this._indicator.setTime(nextPrayer.time);
+            this._scheduleTimeout(Math.max(1, targetSec - nowSec), onComplete);
+        }
+    }
+    _startCountdownTimer(targetSec, prayerSec, onComplete) {
+        const tick = () => {
+            const nowSec = Math.round(GLib.get_real_time() / 1e6);
+            const secLeft = targetSec - nowSec;
+
+            if (secLeft <= 0) {
                 onComplete();
                 return;
             }
 
-            this._indicator.setCountdown(uSecLeft);
-            // TODO: optimise and use timeout directly
-            this._scheduleTimeout(60, tick);
+            this._indicator.setCountdown(Math.ceil((prayerSec - nowSec) / 60));
+            this._scheduleTimeout(secLeft % 60 || 60, tick);
         };
-
         tick();
     }
-    _startStaticWait(targetTimeUsec, onComplete) {
-        this._indicator.setTime(this._scheduleManager.nextPrayer.time);
-        this._scheduleTimeout(Math.ceil((targetTimeUsec - GLib.get_real_time()) / 1e6), () => onComplete());
-    }
 
-    _scheduleNextEvent() {
-        const nextPrayer = this._scheduleManager.nextPrayer;
-
-        this._indicator.setPrayer(this._scheduleManager.nextPrayer);
-
-        const nextPrayerUsec = nextPrayer.time.to_unix_usec();
-        if (this._settings.reminder > 0) {
-            const reminderTargetUsec = nextPrayerUsec - this._settings.reminder * 6e7;
-            if (reminderTargetUsec > GLib.get_real_time()) {
-                this._startTimer(reminderTargetUsec, () => this._onReminder());
-                return;
-            }
-        }
-        this._startTimer(nextPrayerUsec, () => this._onPrayerTime());
-    }
-
-    _onReminder() {
+    _onReminder(prayer) {
         this._indicator.setReminder(this._settings.reminder);
-        this._notifier.notifyReminder(this._scheduleManager.nextPrayer);
-
-        this._scheduleTimeout(60, () => this._scheduleNextEvent());
+        this._notifier.notifyReminder(prayer);
     }
-    async _onPrayerTime() {
+    async _onPrayerTime(prayer) {
         this._indicator.setArrival();
-        this._notifier.notifyArrival(this._scheduleManager.nextPrayer);
+        this._notifier.notifyArrival(prayer);
+
         if (this._settings.isSound) {
             this._soundFile ??= Gio.File.new_for_path(this.path + "/assets/audio/athan.ogg");
             global.display.get_sound_player().play_from_file(this._soundFile, _("Call to prayer"), null);
         }
 
-        if (await this._scheduleManager.advanceToNextPrayer()) {
-            this._menu.update(this._scheduleManager.schedule);
-        } else {
-            this._menu.setActivePrayer(this._scheduleManager.nextPrayerIndex);
-        }
-        this._indicator.setPrayer(this._scheduleManager.nextPrayer);
-
-        this._scheduleTimeout(60, () => this._scheduleNextEvent());
+        if (await this._scheduleManager.advanceToNextPrayer()) this._menu.update(this._scheduleManager.schedule);
+        else this._menu.setActivePrayer(this._scheduleManager.nextPrayerIndex);
     }
 
     reInit() {

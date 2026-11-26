@@ -96,16 +96,15 @@ class IndicatorClass extends PanelMenu.Button {
         this._nameLabel.text = prayer.name;
     }
 
-    setCountdown(uSecLeft) {
-        const totalMinutes = Math.floor(uSecLeft / 6e7);
-        const minutes = totalMinutes % 60;
-        this._detailLabel.text = `${Math.floor(totalMinutes / 60)}h ${minutes < 10 ? "0" + minutes : minutes}m`;
+    setCountdown(minsLeft) {
+        const minutes = minsLeft % 60;
+        this._detailLabel.text = `${(minsLeft / 60) | 0}h ${minutes < 10 ? "0" + minutes : minutes}m`;
     }
     setTime(prayerTime) {
         this._detailLabel.text = prayerTime.format(this._settings.timeFormat);
     }
-    setReminder(reminderMinutes) {
-        this._detailLabel.text = ngettext("in %d minute", "in %d minutes", reminderMinutes).format(reminderMinutes);
+    setReminder(reminderMins) {
+        this._detailLabel.text = ngettext("in %d minute", "in %d minutes", reminderMins).format(reminderMins);
     }
     setArrival() {
         this._detailLabel.text = _("time");
