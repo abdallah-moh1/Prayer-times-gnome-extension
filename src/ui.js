@@ -109,13 +109,5 @@ class IndicatorClass extends PanelMenu.Button {
     setArrival() {
         this._detailLabel.text = _("time");
     }
-
-    destroy() {
-        if (this._indicatorStyleSignal) {
-            this._settings.disconnect(this._indicatorStyleSignal);
-            this._indicatorStyleSignal = null;
-        }
-        super.destroy();
-    }
 }
 export const Indicator = GObject.registerClass(IndicatorClass);

@@ -11,11 +11,10 @@ export default class PrayerTime extends Extension {
     enable() {
         this._soundFile = null;
         this._timeoutId = null;
-        this._startTimer = null;
 
         this._settings = new Settings(this.getSettings(), this.metadata);
 
-        this._scheduleManager = new ScheduleManager(this._settings, this.metadata, () => this.reInit());
+        this._scheduleManager = new ScheduleManager(this._settings, this.metadata);
 
         this._indicator = new Indicator(this.metadata.name, this._settings);
         this._menu = new Menu(this._indicator, this._settings);
@@ -131,6 +130,7 @@ export default class PrayerTime extends Extension {
             global.display.get_sound_player().play_from_file(this._soundFile, _("Call to prayer"), null);
         }
 
+        // FIXME: handle failure creeping into else
         if (await this._scheduleManager.advanceToNextPrayer()) this._menu.update(this._scheduleManager.schedule);
         else this._menu.setActivePrayer(this._scheduleManager.nextPrayerIndex);
     }

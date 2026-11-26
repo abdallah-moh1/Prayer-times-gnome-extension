@@ -91,7 +91,7 @@ export class ScheduleManager {
     #schedule = { prayers: [], nextPrayerIndex: 0 };
     #cancellable = null;
 
-    constructor(settings, metadata, reInit) {
+    constructor(settings, metadata) {
         this.#settings = settings;
         this.#metadata = metadata;
     }
