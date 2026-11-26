@@ -91,15 +91,15 @@ export class Settings {
 
             notification.addAction(_("Review Changes"), () => {
                 Gio.AppInfo.launch_default_for_uri(repoUrl, null);
-                this.#gSettings.set_int("version-cache", metadata.version);
+                this.#gSettings?.set_int("version-cache", metadata.version);
             });
             notification.addAction(_("Dismiss"), () => {
                 notification.destroy();
-                this.#gSettings.set_int("version-cache", metadata.version);
+                this.#gSettings?.set_int("version-cache", metadata.version);
             });
 
             notification.connect("destroy", (_notification, reason) => {
-                if (reason === MessageTray.NotificationDestroyedReason.DISMISSED) this.#gSettings.set_int("version-cache", metadata.version);
+                if (reason === MessageTray.NotificationDestroyedReason.DISMISSED) this.#gSettings?.set_int("version-cache", metadata.version);
             });
 
             systemSource.addNotification(notification);
@@ -115,11 +115,15 @@ export class Settings {
     }
 
     destroy() {
-        this.#gSettings?.disconnect(this.#gSettingsSignal);
-        this.#gSettingsSignal = null;
+        if (this.#gSettingsSignal) {
+            this.#gSettings?.disconnect(this.#gSettingsSignal);
+            this.#gSettingsSignal = null;
+        }
         this.#gSettings = null;
-        this.#desktopSettings?.disconnect(this.#desktopSignal);
-        this.#desktopSignal = null;
+        if (this.#desktopSignal) {
+            this.#desktopSettings?.disconnect(this.#desktopSignal);
+            this.#desktopSignal = null;
+        }
         this.#desktopSettings = null;
     }
 }
