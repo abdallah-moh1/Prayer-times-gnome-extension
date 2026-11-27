@@ -13,14 +13,22 @@ export class MawaqitClient {
     #timezone;
 
     constructor() {}
-    static async create(settings, extensionName, cancellable = null) {
+    static async create(settings, schemaId, cancellable = null) {
         const client = new MawaqitClient();
-        client.#cache = await client.#generateCache(settings.mawaqitSlug, extensionName, cancellable);
+        client.#cache = await client.#generateCache(settings.mawaqitSlug, schemaId, cancellable);
         client.#timezone = GLib.TimeZone.new_identifier(client.#cache.timezone);
         return client;
     }
-    async #generateCache(slug, extensionName, cancellable) {
-        const cacheDir = Gio.File.new_for_path(GLib.get_user_cache_dir() + "/" + extensionName);
+    async #generateCache(slug, schemaId, cancellable) {
+        // cleanup deprecated folder
+        const deprecatedCacheDir = Gio.File.new_for_path(GLib.get_user_cache_dir() + "/Prayer Times");
+        if (deprecatedCacheDir.query_exists(null)) {
+            const file = deprecatedCacheDir.get_child("mawaqit-cache.json");
+            if (file.query_exists(null)) file.delete_async(GLib.PRIORITY_DEFAULT, null);
+            await deprecatedCacheDir.delete_async(GLib.PRIORITY_DEFAULT, null);
+        }
+
+        const cacheDir = Gio.File.new_for_path(GLib.get_user_cache_dir() + "/" + schemaId);
         const cacheFile = cacheDir.get_child("mawaqit-cache.json");
         const nowUnix = GLib.DateTime.new_now_local().to_unix();
 

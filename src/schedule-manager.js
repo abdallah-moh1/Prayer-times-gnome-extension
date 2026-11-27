@@ -8,7 +8,7 @@ import { PrayerTimesCalculator } from "./providers/prayer-times-calculator.js";
 
 class TimeFetcher {
     #settings;
-    #metadata;
+    #schemaId;
     #notifier;
     #cancellable;
     #timezone = GLib.TimeZone.new_local();
@@ -16,9 +16,9 @@ class TimeFetcher {
     #isFallbackToLocal = false;
     #location = null;
 
-    constructor(settings, metadata, notifier, cancellable) {
+    constructor(settings, schemaId, notifier, cancellable) {
         this.#settings = settings;
-        this.#metadata = metadata;
+        this.#schemaId = schemaId;
         this.#notifier = notifier;
         this.#cancellable = cancellable;
     }
@@ -34,7 +34,7 @@ class TimeFetcher {
 
         if (this.#settings.prayerTimeSource === "mawaqit" && !this.#isFallbackToLocal) {
             try {
-                this.#mawaqit ??= await MawaqitClient.create(this.#settings, this.#metadata.name, this.#cancellable);
+                this.#mawaqit ??= await MawaqitClient.create(this.#settings, this.#schemaId, this.#cancellable);
                 return await this.#mawaqit.getTimes(ymd);
             } catch (e) {
                 if (this.isCancelled) throw e;
@@ -70,7 +70,7 @@ class TimeFetcher {
     }
     #getGeoclueLocation() {
         return new Promise((resolve, reject) => {
-            Geoclue.Simple.new_with_thresholds(this.#metadata["settings-schema"], Geoclue.AccuracyLevel.NEIGHBORHOOD, 600, 5000, this.#cancellable, (_source, result) => {
+            Geoclue.Simple.new_with_thresholds(this.#schemaId, Geoclue.AccuracyLevel.NEIGHBORHOOD, 600, 5000, this.#cancellable, (_source, result) => {
                 let proxy = null;
                 try {
                     proxy = Geoclue.Simple.new_with_thresholds_finish(result);
@@ -167,7 +167,7 @@ export class ScheduleManager {
     #createFetcher() {
         this.#cancellable?.cancel();
         this.#cancellable = new Gio.Cancellable();
-        return new TimeFetcher(this.#settings, this.#metadata, this.#notifier, this.#cancellable);
+        return new TimeFetcher(this.#settings, this.#metadata["settings-schema"], this.#notifier, this.#cancellable);
     }
 
     #buildPrayerList(prayerTimes) {
