@@ -55,7 +55,7 @@ export class Settings {
         });
     }
 
-    constructor(gSettings, metadata) {
+    constructor(gSettings, metadata, notifier) {
         this.#gSettings = gSettings;
         this.#desktopSettings = Gio.Settings.new("org.gnome.desktop.interface");
         const schemaVersion = gSettings.get_int("version-cache");
@@ -79,30 +79,28 @@ export class Settings {
         }
 
         if (schemaVersion < metadata.version) {
-            const systemSource = MessageTray.getSystemSource();
-            const repoUrl = `https://github.com/Mocab/Prayer-times-gnome-extension/releases/tag/v${metadata.version}`;
-
-            const notification = new MessageTray.Notification({
-                source: systemSource,
-                title: _("%s Updated").format(metadata.name),
-                body: _("Extension has been updated to v%d. Please review any potential breaking changes.").format(metadata.version),
-                urgency: MessageTray.Urgency.HIGH,
-            });
-
-            notification.addAction(_("Review Changes"), () => {
-                Gio.AppInfo.launch_default_for_uri(repoUrl, null);
-                this.#gSettings?.set_int("version-cache", metadata.version);
-            });
-            notification.addAction(_("Dismiss"), () => {
-                notification.destroy();
-                this.#gSettings?.set_int("version-cache", metadata.version);
-            });
-
-            notification.connect("destroy", (_notification, reason) => {
-                if (reason === MessageTray.NotificationDestroyedReason.DISMISSED) this.#gSettings?.set_int("version-cache", metadata.version);
-            });
-
-            systemSource.addNotification(notification);
+            const updateVersionCache = () => this.#gSettings.set_int("version-cache", metadata.version);
+            notifier.notifyAlert(
+                _("%s Updated").format(metadata.name),
+                _("Extension has been updated to v%d.").format(metadata.version),
+                [
+                    {
+                        title: _("Review Changes"),
+                        action: () => {
+                            Gio.AppInfo.launch_default_for_uri(metadata.url + "/releases/tag/v" + metadata.version, null);
+                            updateVersionCache();
+                        },
+                    },
+                    {
+                        title: _("Dismiss"),
+                        action: () => {
+                            notification.destroy();
+                            updateVersionCache();
+                        },
+                    },
+                ],
+                updateVersionCache,
+            );
         }
     }
 

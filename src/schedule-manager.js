@@ -9,15 +9,17 @@ import { PrayerTimesCalculator } from "./providers/prayer-times-calculator.js";
 class TimeFetcher {
     #settings;
     #metadata;
+    #notifier;
     #cancellable;
     #timezone = GLib.TimeZone.new_local();
     #mawaqit = null;
     #isFallbackToLocal = false;
     #location = null;
 
-    constructor(settings, metadata, cancellable) {
+    constructor(settings, metadata, notifier, cancellable) {
         this.#settings = settings;
         this.#metadata = metadata;
+        this.#notifier = notifier;
         this.#cancellable = cancellable;
     }
 
@@ -38,7 +40,7 @@ class TimeFetcher {
                 if (this.isCancelled) throw e;
                 this.#isFallbackToLocal = true;
                 const locationType = this.#settings.isAutoLocation ? _("automatic location detection") : _("manual location");
-                Main.notify(this.#metadata.name, _("Mawaqit client failed, defaulting to local calculations with %s: %s").format(locationType, e.message));
+                this.#notifier.notifyError(_("Mawaqit client failed, defaulting to local calculations with %s: %s").format(locationType, e.message));
             }
         }
 
@@ -48,7 +50,7 @@ class TimeFetcher {
                     this.#location = await this.#getGeoclueLocation();
                 } catch (e) {
                     if (this.isCancelled) throw e;
-                    Main.notify(this.#metadata.name, _("Failed to find location automatically. Defaulting to manual location: %s").format(e.message));
+                    this.#notifier.notifyError(_("Failed to find location automatically. Defaulting to manual location: %s").format(e.message));
                 }
             }
             this.#location ??= { latitude: this.#settings.latitude, longitude: this.#settings.longitude };
@@ -88,12 +90,14 @@ class TimeFetcher {
 export class ScheduleManager {
     #settings;
     #metadata;
+    #notifier;
     #schedule = { prayers: [], nextPrayerIndex: 0 };
     #cancellable = null;
 
-    constructor(settings, metadata) {
+    constructor(settings, metadata, notifier) {
         this.#settings = settings;
         this.#metadata = metadata;
+        this.#notifier = notifier;
     }
 
     get schedule() {
@@ -163,7 +167,7 @@ export class ScheduleManager {
     #createFetcher() {
         this.#cancellable?.cancel();
         this.#cancellable = new Gio.Cancellable();
-        return new TimeFetcher(this.#settings, this.#metadata, this.#cancellable);
+        return new TimeFetcher(this.#settings, this.#metadata, this.#notifier, this.#cancellable);
     }
 
     #buildPrayerList(prayerTimes) {

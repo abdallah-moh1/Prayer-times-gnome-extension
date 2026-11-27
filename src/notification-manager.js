@@ -20,7 +20,19 @@ export class NotificationManager {
         this.#triggerNotification(prayer.icon, _("%s Reminder").format(prayer.name), ngettext("Begins in %d minute.", "Begins in %d minutes.", this.#settings.reminder).format(this.#settings.reminder));
     }
 
-    #triggerNotification(gicon, title, body) {
+    notifyError(body) {
+        this.#triggerNotification(null, _("Error"), body, MessageTray.Urgency.HIGH);
+    }
+
+    notifyAlert(title, body, actions = [], dismissCallback = () => {}) {
+        const notification = this.#triggerNotification(null, title, body, MessageTray.Urgency.HIGH);
+        for (const action of actions) notification.addAction(action.title, action.callback);
+        notification.connect("destroy", (_notification, reason) => {
+            if (reason === MessageTray.NotificationDestroyedReason.DISMISSED) dismissCallback();
+        });
+    }
+
+    #triggerNotification(gicon = null, title, body, urgency = MessageTray.Urgency.NORMAL) {
         if (!this.#settings.isNotify) return;
 
         if (!this.#notificationSource) {
@@ -31,16 +43,16 @@ export class NotificationManager {
             this.#notificationSource.connect("destroy", () => (this.#notificationSource = null));
             Main.messageTray.add(this.#notificationSource);
         }
-        this.#notificationSource.addNotification(
-            new MessageTray.Notification({
-                source: this.#notificationSource,
-                title,
-                body,
-                gicon,
-                urgency: MessageTray.Urgency.NORMAL,
-                isTransient: true,
-            }),
-        );
+        const notification = new MessageTray.Notification({
+            source: this.#notificationSource,
+            title,
+            body,
+            gicon,
+            urgency,
+            isTransient: false,
+        });
+        this.#notificationSource.addNotification(notification);
+        return notification;
     }
 
     destroy() {
