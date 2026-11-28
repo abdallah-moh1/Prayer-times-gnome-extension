@@ -12,8 +12,9 @@ export default class PrayerTime extends Extension {
         this._soundFile = null;
         this._timeoutId = null;
 
+        this._settings = new Settings(this.getSettings());
         this._notifier = new NotificationManager(this.metadata.name, this._settings);
-        this._settings = new Settings(this.getSettings(), this.metadata, this._notifier);
+        this._settings.checkVersion(this.metadata, this._notifier);
         this._scheduleManager = new ScheduleManager(this._settings, this.metadata, this._notifier);
 
         this._indicator = new Indicator(this.metadata.name, this._settings);

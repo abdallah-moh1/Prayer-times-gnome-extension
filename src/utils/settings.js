@@ -55,7 +55,7 @@ export class Settings {
         });
     }
 
-    constructor(gSettings, metadata, notifier) {
+    constructor(gSettings) {
         this.#gSettings = gSettings;
         this.#desktopSettings = Gio.Settings.new("org.gnome.desktop.interface");
         const schemaVersion = gSettings.get_int("version-cache");
@@ -77,31 +77,31 @@ export class Settings {
                     break;
             }
         }
+    }
 
-        if (schemaVersion < metadata.version) {
-            const updateVersionCache = () => this.#gSettings.set_int("version-cache", metadata.version);
-            notifier.notifyAlert(
-                _("%s Updated").format(metadata.name),
-                _("Extension has been updated to v%d.").format(metadata.version),
-                [
-                    {
-                        title: _("Review Changes"),
-                        action: () => {
-                            Gio.AppInfo.launch_default_for_uri(metadata.url + "/releases/tag/v" + metadata.version, null);
-                            updateVersionCache();
-                        },
+    checkVersion(metadata, notifier) {
+        const schemaVersion = this.#gSettings.get_int("version-cache");
+        if (schemaVersion >= metadata.version) return;
+
+        const updateVersionCache = () => this.#gSettings.set_int("version-cache", metadata.version);
+        notifier.notifyAlert(
+            _("%s Updated").format(metadata.name),
+            _("Extension has been updated to v%d.").format(metadata.version),
+            [
+                {
+                    title: _("Review Changes"),
+                    callback: () => {
+                        Gio.AppInfo.launch_default_for_uri(metadata.url + "/releases/tag/v" + metadata.version, null);
+                        updateVersionCache();
                     },
-                    {
-                        title: _("Dismiss"),
-                        action: () => {
-                            notification.destroy();
-                            updateVersionCache();
-                        },
-                    },
-                ],
-                updateVersionCache,
-            );
-        }
+                },
+                {
+                    title: _("OK"),
+                    callback: updateVersionCache,
+                },
+            ],
+            updateVersionCache,
+        );
     }
 
     connectGSettingSignal(signal, callback) {
