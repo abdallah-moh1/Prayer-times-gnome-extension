@@ -145,27 +145,14 @@ export default class PrayerTime extends Extension {
     }
 
     disable() {
-        this._stopTimer();
-
         if (this._wakeSignalId) {
             Gio.DBus.system.signal_unsubscribe(this._wakeSignalId);
             this._wakeSignalId = null;
         }
+        this._settings?.disconnectSignals();
 
-        if (this._settings) {
-            this._settings.destroy();
-            this._settings = null;
-        }
+        this._stopTimer();
 
-        if (this._scheduleManager) {
-            this._scheduleManager.destroy();
-            this._scheduleManager = null;
-        }
-
-        if (this._notifier) {
-            this._notifier.destroy();
-            this._notifier = null;
-        }
         if (this._menu) {
             this._menu.clear();
             this._menu = null;
@@ -173,6 +160,20 @@ export default class PrayerTime extends Extension {
         if (this._indicator) {
             this._indicator.destroy();
             this._indicator = null;
+        }
+
+        if (this._scheduleManager) {
+            this._scheduleManager.destroy();
+            this._scheduleManager = null;
+        }
+        if (this._notifier) {
+            this._notifier.destroy();
+            this._notifier = null;
+        }
+
+        if (this._settings) {
+            this._settings.destroy();
+            this._settings = null;
         }
 
         this._soundFile = null;

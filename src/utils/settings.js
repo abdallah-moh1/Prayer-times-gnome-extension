@@ -105,23 +105,29 @@ export class Settings {
     }
 
     connectGSettingSignal(signal, callback) {
+        if (this.#gSettingsSignal) this.#gSettings?.disconnect(this.#gSettingsSignal);
         this.#gSettingsSignal = this.#gSettings.connect(signal, callback);
     }
 
     connectDesktopSignal(signal, callback) {
+        if (this.#desktopSignal) this.#desktopSettings?.disconnect(this.#desktopSignal);
         this.#desktopSignal = this.#desktopSettings.connect(signal, callback);
     }
 
-    destroy() {
+    disconnectSignals() {
         if (this.#gSettingsSignal) {
             this.#gSettings?.disconnect(this.#gSettingsSignal);
             this.#gSettingsSignal = null;
         }
-        this.#gSettings = null;
         if (this.#desktopSignal) {
             this.#desktopSettings?.disconnect(this.#desktopSignal);
             this.#desktopSignal = null;
         }
+    }
+
+    destroy() {
+        this.disconnectSignals();
+        this.#gSettings = null;
         this.#desktopSettings = null;
     }
 }
