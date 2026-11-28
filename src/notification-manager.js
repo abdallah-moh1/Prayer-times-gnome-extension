@@ -13,17 +13,17 @@ export class NotificationManager {
     }
 
     notifyArrival(prayer) {
+        if (!this.#settings.isNotify) return;
         this.#triggerNotification(prayer.icon, _("Time for %s").format(prayer.name), _("It is time to pray."));
     }
-
     notifyReminder(prayer) {
+        if (!this.#settings.isNotify) return;
         this.#triggerNotification(prayer.icon, _("%s Reminder").format(prayer.name), ngettext("Begins in %d minute.", "Begins in %d minutes.", this.#settings.reminder).format(this.#settings.reminder));
     }
 
     notifyError(title, body) {
         this.#triggerNotification(null, title, body, MessageTray.Urgency.HIGH);
     }
-
     notifyAlert(title, body, actions = [], dismissCallback = () => {}) {
         const notification = this.#triggerNotification(null, title, body, MessageTray.Urgency.HIGH);
         for (const action of actions) notification.addAction(action.title, action.callback);
@@ -33,8 +33,6 @@ export class NotificationManager {
     }
 
     #triggerNotification(gicon = null, title, body, urgency = MessageTray.Urgency.NORMAL) {
-        if (!this.#settings.isNotify) return;
-
         if (!this.#notificationSource) {
             this.#notificationSource = new MessageTray.Source({
                 title: this.#extensionName,
