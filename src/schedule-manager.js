@@ -40,7 +40,7 @@ class TimeFetcher {
                 if (this.isCancelled) throw e;
                 this.#isFallbackToLocal = true;
                 const locationType = this.#settings.isAutoLocation ? _("automatic location detection") : _("manual location");
-                this.#notifier.notifyError(_("Mawaqit client failed, defaulting to local calculations with %s: %s").format(locationType, e.message));
+                this.#notifier.notifyError(_("Mawaqit Client Failed"), _("Defaulting to local calculations with %s: %s").format(locationType, e.message));
             }
         }
 
@@ -50,7 +50,7 @@ class TimeFetcher {
                     this.#location = await this.#getGeoclueLocation();
                 } catch (e) {
                     if (this.isCancelled) throw e;
-                    this.#notifier.notifyError(_("Failed to find location automatically. Defaulting to manual location: %s").format(e.message));
+                    this.#notifier.notifyError(_("Failed to Find Location Automatically"), _("Defaulting to manual location: %s").format(e.message));
                 }
             }
             this.#location ??= { latitude: this.#settings.latitude, longitude: this.#settings.longitude };
@@ -141,7 +141,7 @@ export class ScheduleManager {
             this.#schedule = { prayers, nextPrayerIndex };
             return true;
         } catch (e) {
-            if (!fetcher.isCancelled) console.error(`[${this.#metadata.name}]: Failed to build schedule:`, e);
+            if (!fetcher.isCancelled) this.#notifier.notifyError(_("Failed to Build Schedule"), e.message);
         }
         return false;
     }
@@ -159,7 +159,8 @@ export class ScheduleManager {
             this.#schedule = { prayers: this.#buildPrayerList(tomorrowTimes), nextPrayerIndex: 0 };
             return true;
         } catch (e) {
-            if (!fetcher.isCancelled) console.error(`[${this.#metadata.name}]: Failed to advance to new day:`, e);
+            if (!fetcher.isCancelled) this.#notifier.notifyError(_("Failed to Advance to New Day"), e.message);
+            return null;
         }
         return false;
     }

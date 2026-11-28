@@ -20,8 +20,8 @@ export class NotificationManager {
         this.#triggerNotification(prayer.icon, _("%s Reminder").format(prayer.name), ngettext("Begins in %d minute.", "Begins in %d minutes.", this.#settings.reminder).format(this.#settings.reminder));
     }
 
-    notifyError(body) {
-        this.#triggerNotification(null, _("Error"), body, MessageTray.Urgency.HIGH);
+    notifyError(title, body) {
+        this.#triggerNotification(null, title, body, MessageTray.Urgency.HIGH);
     }
 
     notifyAlert(title, body, actions = [], dismissCallback = () => {}) {
