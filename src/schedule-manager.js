@@ -148,8 +148,7 @@ export class ScheduleManager {
 
     async advanceToNextPrayer() {
         if (this.#schedule.nextPrayerIndex < this.#schedule.prayers.length - 1) {
-            this.#schedule.nextPrayerIndex++;
-            return false;
+            return ++this.#schedule.nextPrayerIndex;
         }
 
         const fetcher = this.#createFetcher();
@@ -157,12 +156,11 @@ export class ScheduleManager {
             const tomorrowTimes = await fetcher.get(this.#schedule.prayers[0].time.add_days(1));
             if (fetcher.isCancelled) return false;
             this.#schedule = { prayers: this.#buildPrayerList(tomorrowTimes), nextPrayerIndex: 0 };
-            return true;
+            return 0;
         } catch (e) {
             if (!fetcher.isCancelled) this.#notifier.notifyError(_("Failed to Advance to New Day"), e.message);
             return null;
         }
-        return false;
     }
 
     #createFetcher() {

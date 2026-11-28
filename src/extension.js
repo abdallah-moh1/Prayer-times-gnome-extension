@@ -91,7 +91,7 @@ export default class PrayerTime extends Extension {
 
         const onComplete = async () => {
             if (isReminder) this._onReminder(nextPrayer);
-            else await this._onPrayerTime(nextPrayer);
+            else await this._onPrayerTime(nextPrayer).catch((e) => console.error(`${this.metadata.name}: Unexpected error during prayer arrival:`, e));
 
             this._scheduleTimeout(60, () => this._scheduleNextEvent());
         };
@@ -132,9 +132,9 @@ export default class PrayerTime extends Extension {
             global.display.get_sound_player().play_from_file(this._soundFile, _("Call to prayer"), null);
         }
 
-        // FIXME: handle failure creeping into else
-        if (await this._scheduleManager.advanceToNextPrayer()) this._menu.update(this._scheduleManager.schedule);
-        else this._menu.setActivePrayer(this._scheduleManager.nextPrayerIndex);
+        const nextIndex = await this._scheduleManager.advanceToNextPrayer();
+        if (nextIndex > 0) this._menu.setActivePrayer(nextIndex);
+        else if (nextIndex === 0) this._menu.update(this._scheduleManager.schedule);
     }
 
     reInit() {
